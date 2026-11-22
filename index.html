@@ -697,9 +697,9 @@ MH.css(`
 `);
 
 /* "Find your mate" holds while the logo animation plays. Once the handshake has formed the
-   centre shape (about 3.5 s into the cut), the gap opens: flat → travel → activity, then closes
+   centre shape (about 3.5 s into the cut), the gap opens: flat → co-founder → travel → activity, then closes
    on "Find your mate" again, and the app moves on (MH.splashDone, app mode only). */
-const MATES=['flat','travel ','activity '];
+const MATES=['flat','co-founder ','travel ','activity '];
 const LEAF_AT=3.5, STEP=1200;
 function tagline(ph){
   (ph._tg||[]).forEach(clearTimeout); ph._tg=[];
@@ -725,8 +725,8 @@ function tagline(ph){
 }
 
 MH.screen({id:'splash',flow:'start',title:'Splash',raw:true,
-  note:'Plays the approved logo animation once (search → handshake → logo; a cut of animation/machahub-logo-loop.mp4 without the opening release). Under the name, "Find your mate" stays until the handshake forms the centre shape, then opens a gap that cycles flat → travel → activity and closes again, so people see at once that MachaHub is for more than flats. Then it moves on by itself. Tap to skip.',
-  html:`<button class="splash" data-go="welcome" aria-label="MachaHub. Find your mate: a flatmate, a travel mate or an activity mate. Tap to continue." style="border:0">
+  note:'Plays the approved logo animation once (search → handshake → logo; a cut of animation/machahub-logo-loop.mp4 without the opening release). Under the name, "Find your mate" stays until the handshake forms the centre shape, then opens a gap that cycles flat → co-founder → travel → activity (the four categories, in the same order as onboarding) and closes again, so people see at once that MachaHub is for more than flats. Then it moves on by itself. Tap to skip.',
+  html:`<button class="splash" data-go="welcome" aria-label="MachaHub. Find your mate: a flatmate, a co-founder mate, a travel mate or an activity mate. Tap to continue." style="border:0">
     <video class="sp-vid" src="assets/splash-logo.mp4" poster="assets/splash-logo-first.jpg" muted playsinline preload="auto" aria-hidden="true" disablepictureinpicture></video>
     <span class="sp-static">${logo(120)}</span>
     <div class="wordmark">Macha<span>Hub</span></div>
