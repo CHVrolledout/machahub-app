@@ -426,7 +426,7 @@ const ic = (n, style='') => `<svg class="i" viewBox="0 0 24 24" aria-hidden="tru
 const flows = [], screens = [], byId = {};
 let cssBuf = '';
 const MH = window.MH = {
-  icons:P, i:ic,
+  icons:P, i:ic, byId,
   flow(id, title, desc){ flows.push({id,title,desc}); },
   screen(s){ s.html = s.html||''; screens.push(s); byId[s.id]=s; if(s.css) cssBuf += s.css; },
   css(str){ cssBuf += str; },
@@ -703,6 +703,7 @@ const {i,appbar} = MH;
 MH.flow('onboarding','Onboarding','Category, mode, budget and area, an optional "your place" step for people who have a room, the five lifestyle rows we match on, and a payoff screen that shows the value before we ask for ID.');
 
 MH.css(`
+[data-place="yes"] .only-no,[data-place="no"] .only-yes{display:none!important}
 .cats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}
 .cat{position:relative;text-align:left;display:flex;flex-direction:column;gap:14px;padding:18px 16px;min-height:164px;border-radius:var(--r-card);border:1.5px solid transparent;background:var(--card);box-shadow:var(--shadow)}
 .cat[aria-pressed="true"]{border-color:var(--ink)}
@@ -757,27 +758,38 @@ MH.screen({id:'who',flow:'onboarding',title:'Who are you looking for',
   bar:`<button class="btn btn-primary" data-go="place">Continue</button>`});
 
 MH.screen({id:'place',flow:'onboarding',title:'Do you have a place',
-  note:'Sets the profile mode. "Yes" adds the Your place step after Budget & area.',
+  note:'Sets the profile mode, and the path. "Yes" asks for the area and move-in date, then adds the Your place step (rent share, photos). "Not yet" asks for a budget and areas, then goes straight to How you live.',
   html:`${MH.step(3,7,'who')}
   <h1>Do you already have a place?</h1>
   <p class="lead">This decides what your profile shows.</p>
   <div class="gap12 mt24" role="radiogroup" aria-label="Do you have a place">
-    <button class="opt" role="radio" aria-checked="true"><div class="tile-ic lg">${i('key')}</div><div><b>Yes, I have a place</b><span class="cap">Find someone to share it. You'll add the area, rent share and a few room photos.</span></div><span class="rdot"></span></button>
-    <button class="opt" role="radio" aria-checked="false"><div class="tile-ic lg">${i('people')}</div><div><b>Not yet</b><span class="cap">Team up with someone to find a place, or join someone's room.</span></div><span class="rdot"></span></button>
+    <button class="opt" role="radio" data-place="yes" aria-checked="true"><div class="tile-ic lg">${i('key')}</div><div><b>Yes, I have a place</b><span class="cap">Find someone to share it. You'll add the area, rent share and a few room photos.</span></div><span class="rdot"></span></button>
+    <button class="opt" role="radio" data-place="no" aria-checked="false"><div class="tile-ic lg">${i('people')}</div><div><b>Not yet</b><span class="cap">Team up with someone to find a place, or join someone's room.</span></div><span class="rdot"></span></button>
   </div>`,
-  bar:`<button class="btn btn-primary" data-go="budget">Continue</button>`});
+  bar:`<button class="btn btn-primary" data-go="budget">Continue</button>`,
+  mount(ph){ ph.querySelectorAll('[data-place]').forEach(b=>b.addEventListener('click',()=>setPlace(b.dataset.place))); }});
 
 MH.screen({id:'budget',flow:'onboarding',title:'Budget & area',
-  note:'Rent share, areas and move-in timing on one screen. Areas are searched, not mapped: we match people, not property.',
+  note:'One screen, two versions. Not yet: your max rent share, the areas you would live in, and when you want to move in. Have a place: just where it is and when someone can move in (the rent share comes on the next screen). Areas are searched, not mapped: we match people, not property.',
   html:`${MH.step(4,7,'place')}
-  <h1>Budget &amp; area</h1>
-  <div class="card pad budget mt20">
+  <h1 class="only-no">Budget &amp; area</h1>
+  <h1 class="only-yes">Area &amp; move-in</h1>
+  <p class="lead only-yes">Where your place is, and when your new flatmate can move in.</p>
+  <div class="card pad budget mt20 only-no">
     <label for="bd-r" class="cap">Your max rent share</label>
     <div class="amt">₹15,000 <small>/ month</small></div>
     <input type="range" id="bd-r" min="5000" max="40000" step="500" value="15000">
     <div class="range-ends"><span>₹5,000</span><span>₹40,000</span></div>
   </div>
-  <div class="mt20">
+  <div class="mt20 only-yes">
+    <div class="sect-h"><h3>Where is your place?</h3></div>
+    <label class="input">${i('search')}<span class="sr">Search your area</span><input placeholder="Search your area"></label>
+    <div class="chips mt12">
+      <span class="chip on areachip">HSR Layout<button class="x" aria-label="Remove HSR Layout" data-toast="Removed HSR Layout">${i('x')}</button></span>
+    </div>
+    <span class="cap mt8" style="display:block">Only the area is shown. The exact address stays private.</span>
+  </div>
+  <div class="mt20 only-no">
     <div class="sect-h"><h3>Areas in Bengaluru</h3><span class="cap">2 selected</span></div>
     <label class="input">${i('search')}<span class="sr">Search an area</span><input placeholder="Search an area"></label>
     <div class="chips mt12">
@@ -791,7 +803,7 @@ MH.screen({id:'budget',flow:'onboarding',title:'Budget & area',
     </div>
   </div>
   <div class="mt20">
-    <div class="sect-h"><h3>When do you want to move in?</h3></div>
+    <div class="sect-h"><h3 class="only-no">When do you want to move in?</h3><h3 class="only-yes">When can they move in?</h3></div>
     <div class="chips" role="radiogroup" aria-label="Move-in" style="display:grid;grid-template-columns:1fr 1fr">
       <button class="chip" role="radio" aria-checked="false">Now</button>
       <button class="chip on" role="radio" aria-checked="true">Within a month</button>
@@ -802,7 +814,7 @@ MH.screen({id:'budget',flow:'onboarding',title:'Budget & area',
   bar:`<button class="btn btn-primary" data-go="yourplace">Continue</button>`});
 
 MH.screen({id:'yourplace',flow:'onboarding',title:'Your place',
-  note:'Only for "Yes, I have a place". Room photos and the facts flatmates ask first. Address stays hidden until both people say hi.',
+  note:'Only for "Yes, I have a place" (skipped for "Not yet"). Room photos and the facts flatmates ask first. Address stays hidden until both people say hi.',
   html:`${MH.step(4,7,'budget')}
   <h1>Your place</h1>
   <p class="lead">A few room photos and the basics. The exact address stays private.</p>
@@ -881,17 +893,38 @@ MH.screen({id:'style',flow:'onboarding',title:'Your living style',
   </div>
   <div class="card pad hstack mt12" style="gap:14px;padding:18px">
     <div class="avs">${MH.av('AR','a1')}${MH.av('RK','a2')}${MH.av('KS','a3')}${MH.av('SM','a4')}</div>
-    <div class="cap" style="color:var(--text);font-size:14px"><b>38 people</b> match your style in <b>HSR Layout and Koramangala</b></div>
+    <div class="cap" style="color:var(--text);font-size:14px"><b>38 people</b> match your style <span class="only-yes">near <b>HSR Layout</b></span><span class="only-no">in <b>HSR Layout and Koramangala</b></span></div>
   </div>
   <div class="card pad hstack mt12">
     <div class="tile-ic">${i('wallet')}</div>
-    <div class="cap" style="color:var(--text);font-size:14px">Asking <b>₹14,500</b> a month for a private room · moving in within a month</div>
+    <div class="cap only-yes" style="color:var(--text);font-size:14px">Asking <b>₹14,500</b> a month for a private room in <b>HSR Layout</b> · free within a month</div>
+    <div class="cap only-no" style="color:var(--text);font-size:14px">Up to <b>₹15,000</b> a month · <b>HSR Layout or Koramangala</b> · moving in within a month</div>
   </div>
   <button class="card pad hstack mt12" style="width:100%;text-align:left;border:0" data-go="my-questions">
     <div class="tile-ic">${i('speech')}</div>
     <div style="flex:1"><b class="strong" style="font-size:15px">Add your own questions</b><div class="cap">Optional. Anyone who says hi answers them first.</div></div>${i('chev')}
   </button>`,
   bar:`<button class="btn btn-primary" data-go="notif-ask">See my matches${i('arrow')}</button>`});
+
+/* The answer on "Do you have a place?" picks the path. Yes: Area & move-in, then Your place.
+   Not yet: Budget & area, then straight to How you live. Steps, back and Continue follow it. */
+const PATH={
+  yes:['about','who','place','budget','yourplace','live','habits','style'],
+  no: ['about','who','place','budget','live','habits','style']};
+function setPlace(v){ document.documentElement.dataset.place=v; const ph=document.querySelector('[data-screen="place"]'); if(ph&&typeof fit==='function') fit(ph); }
+const fit=ph=>{
+  const id=ph.dataset.screen, path=PATH[document.documentElement.dataset.place]||PATH.yes, k=path.indexOf(id);
+  if(k<0) return;
+  const n=ph.querySelector('.stepn'), bar=ph.querySelector('.progress'), back=ph.querySelector('.stephead [data-back]'), next=ph.querySelector('.bar [data-go]');
+  if(n) n.textContent=`${k+1} of ${path.length}`;
+  if(bar){ bar.setAttribute('aria-label',`Step ${k+1} of ${path.length}`); bar.setAttribute('aria-valuenow',k+1); bar.setAttribute('aria-valuemax',path.length); bar.firstElementChild.style.width=`${(k+1)/path.length*100}%`; }
+  if(back && k>0) back.dataset.back=path[k-1];
+  if(next && k<path.length-1 && id!=='style') next.dataset.go=path[k+1];
+};
+if(!document.documentElement.dataset.place) document.documentElement.dataset.place='yes';
+PATH.yes.forEach(id=>{ const s=MH.byId[id]; if(!s) return; const prev=s.onShow, prevM=s.mount;
+  s.onShow=ph=>{ fit(ph); prev&&prev(ph); };
+  s.mount=ph=>{ prevM&&prevM(ph); fit(ph); }; });
 })();
 
 </script>

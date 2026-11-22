@@ -1,7 +1,7 @@
 /* MachaHub web app service worker. Generated into prototype/site/sw.js by build.py.
    Pages: network first, falling back to the cache (so a new deploy shows up straight away,
    and the app still opens offline). Everything else: cache first. */
-const VERSION = 'mh-da672ce6b2';
+const VERSION = 'mh-e6300ce2cd';
 const SHELL = ["./", "index.html", "overview.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/maskable-192.png", "icons/apple-touch-icon.png", "icons/favicon-32.png"];
 
 self.addEventListener('install', e => {
