@@ -1,8 +1,8 @@
 /* MachaHub web app service worker. Generated into prototype/site/sw.js by build.py.
    Pages: network first, falling back to the cache (so a new deploy shows up straight away,
    and the app still opens offline). Everything else: cache first. */
-const VERSION = 'mh-e6300ce2cd';
-const SHELL = ["./", "index.html", "overview.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/maskable-192.png", "icons/apple-touch-icon.png", "icons/favicon-32.png"];
+const VERSION = 'mh-726d0ca240';
+const SHELL = ["./", "index.html", "overview.html", "manifest.webmanifest", "assets/splash-logo-first.jpg", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/maskable-192.png", "icons/apple-touch-icon.png", "icons/favicon-32.png"];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -22,6 +22,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   const fonts = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (url.origin !== location.origin && !fonts) return;
+  if (url.pathname.endsWith('.mp4') || req.headers.has('range')) return;  // video: straight from the network
 
   if (req.mode === 'navigate') {
     e.respondWith(

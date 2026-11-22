@@ -634,7 +634,9 @@ MH.bootApp=function({start='splash'}={}){
   if(first!==start){ state.cur='welcome'; history.replaceState({mh:'welcome'},'','#welcome'); go(first); }
   else go(first,{push:false});
   // The splash moves on by itself, and is replaced so back never returns to it.
-  if(first==='splash') setTimeout(()=>{ if(state.cur==='splash') go('welcome',{push:false}); },2400);
+  const leave=()=>{ if(state.cur==='splash') go('welcome',{push:false}); };
+  MH.splashDone=leave;                                   // the splash calls this when its tagline ends
+  if(first==='splash') setTimeout(leave,byId.splash.hold||2400);   // safety net
   addEventListener('popstate',()=>{
     const id=location.hash.slice(1);
     if(!byId[id] || id===state.cur) return;
@@ -667,8 +669,21 @@ MH.flow('start','Open & sign in','First launch after install. One-shot logo anim
 MH.css(`
 .splash{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(90% 60% at 50% 42%,var(--card),var(--bg) 70%)}
 .splash img{animation:splashIn 1.1s var(--ease) both}
+/* The approved logo animation, one-shot cut (search → handshake → logo). Its frame is cream,
+   so the light splash is flat cream; dark theme, reduced motion and no-video keep the static logo. */
+[data-theme="light"] .splash{background:var(--bg)}
+.sp-vid{width:250px;height:250px;margin:-40px 0 -46px;display:block;pointer-events:none;-webkit-mask-image:radial-gradient(closest-side,#000 66%,transparent 72%);mask-image:radial-gradient(closest-side,#000 66%,transparent 72%)}
+.splash .sp-static{display:none}
+[data-theme="dark"] .sp-vid,.splash.novid .sp-vid{display:none}
+[data-theme="dark"] .splash .sp-static,.splash.novid .sp-static{display:block}
+@media (prefers-reduced-motion: reduce){.sp-vid{display:none}.splash .sp-static{display:block}}
 .splash .wordmark{animation:rise .8s .5s var(--ease) both}
 .splash .by{position:absolute;bottom:44px;font-size:13px;color:var(--sub);animation:rise .8s .8s var(--ease) both}
+.tagline{display:flex;align-items:flex-end;justify-content:center;font:600 21px/1.25 Poppins,sans-serif;color:var(--text);margin-top:-8px;animation:rise .8s .7s var(--ease) both;white-space:pre}
+.tg-slot{position:relative;display:inline-block;height:1.25em;width:0;overflow:hidden;transition:width .5s var(--ease)}
+.tg-slot > span{position:absolute;left:0;bottom:0;white-space:pre;color:var(--ink);opacity:0;transform:translateY(90%);transition:transform .45s var(--ease),opacity .3s}
+.tg-slot > span[data-s="in"]{opacity:1;transform:none}
+.tg-slot > span[data-s="out"]{opacity:0;transform:translateY(-90%)}
 @keyframes splashIn{from{opacity:0;transform:scale(.86) rotate(-6deg)}to{opacity:1;transform:none}}
 .wordmark{font:700 34px/1 Poppins,sans-serif;letter-spacing:-.5px;color:var(--text)}
 .wordmark span{color:var(--ink)}
@@ -681,13 +696,44 @@ MH.css(`
 .terms a{font-weight:500}
 `);
 
+/* "Find your mate" holds while the logo animation plays. Once the handshake has formed the
+   centre shape (about 3.5 s into the cut), the gap opens: flat → travel → activity, then closes
+   on "Find your mate" again, and the app moves on (MH.splashDone, app mode only). */
+const MATES=['flat','travel ','activity '];
+const LEAF_AT=3.5, STEP=1200;
+function tagline(ph){
+  (ph._tg||[]).forEach(clearTimeout); ph._tg=[];
+  const at=(ms,f)=>ph._tg.push(setTimeout(f,ms));
+  const v=ph.querySelector('.sp-vid'), slot=ph.querySelector('.tg-slot'); if(!slot) return;
+  const words=[...slot.children];
+  const show=k=>{ words.forEach((w,j)=>w.dataset.s = j<k?'out':j===k?'in':''); slot.style.width = k<words.length ? words[k].offsetWidth+'px' : '0px'; };
+  slot.style.transition='none'; words.forEach(w=>w.dataset.s=''); slot.style.width='0px'; void slot.offsetWidth; slot.style.transition='';
+  const done=()=>MH.splashDone && MH.splashDone();
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ at(2500,done); return; }
+  let started=false;
+  const cycle=()=>{ if(started) return; started=true; if(v) v.ontimeupdate=null;
+    words.forEach((_,k)=>at(k*STEP,()=>show(k))); at(words.length*STEP,()=>show(words.length)); at(words.length*STEP+1300,done); };
+  const playing = v && getComputedStyle(v).display!=='none';
+  if(playing){
+    v.onerror=()=>{ ph.querySelector('.splash').classList.add('novid'); at(800,cycle); };
+    v.ontimeupdate=()=>{ if(v.currentTime>=LEAF_AT) cycle(); };
+    v.onended=cycle;
+    try{ v.currentTime=0; }catch(_){}
+    const p=v.play(); if(p) p.catch(()=>at(800,cycle));   // autoplay blocked: show the static logo's timing
+    at(6000,cycle);                                         // never wait longer than this
+  } else at(1500,cycle);
+}
+
 MH.screen({id:'splash',flow:'start',title:'Splash',raw:true,
-  note:'Plays the logo animation once (search → handshake → logo), then moves on by itself. Tap to continue in the prototype.',
-  html:`<button class="splash" data-go="welcome" aria-label="Continue to welcome" style="border:0">
-    ${logo(120)}
+  note:'Plays the approved logo animation once (search → handshake → logo; a cut of animation/machahub-logo-loop.mp4 without the opening release). Under the name, "Find your mate" stays until the handshake forms the centre shape, then opens a gap that cycles flat → travel → activity and closes again, so people see at once that MachaHub is for more than flats. Then it moves on by itself. Tap to skip.',
+  html:`<button class="splash" data-go="welcome" aria-label="MachaHub. Find your mate: a flatmate, a travel mate or an activity mate. Tap to continue." style="border:0">
+    <video class="sp-vid" src="assets/splash-logo.mp4" poster="assets/splash-logo-first.jpg" muted playsinline preload="auto" aria-hidden="true" disablepictureinpicture></video>
+    <span class="sp-static">${logo(120)}</span>
     <div class="wordmark">Macha<span>Hub</span></div>
-    <div class="by">Find your mate. Do more together.</div>
-  </button>`});
+    <div class="tagline" aria-hidden="true">Find your <span class="tg-slot">${MATES.map(w=>`<span>${w}</span>`).join('')}</span>mate</div>
+    <div class="by">Do more together.</div>
+  </button>`,
+  hold:12000, mount:tagline, onShow:tagline});
 
 MH.screen({id:'welcome',flow:'start',title:'Welcome',
   note:'The idea at a glance: three reasons to trust MachaHub, then sign in. Returning users sign in from here too.',
