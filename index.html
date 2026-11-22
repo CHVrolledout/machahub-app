@@ -2044,7 +2044,7 @@ MH.screen({id:'report',flow:'chats',title:'Report',
   note:'Private and quick. One reason, optional details, and blocking in the same step.',
   html:`${appbar({back:'chat',title:'Report Ananya'}).replace(i('back'),i('x')).replace('aria-label="Back"','aria-label="Close"')}
   <h1>What's wrong?</h1>
-  <p class="lead">Your report is private. Ananya won't know it was you.</p>
+  <p class="lead">Your report is private. Ananya won't know it was you. To check it, our safety team will open this chat.</p>
   <div class="gap8 mt20" role="radiogroup" aria-label="Reason">
     ${reason('Fake profile','Photos or details aren\'t really theirs')}
     ${reason('Asked for money before a visit','Deposit, token amount or booking fee',true)}
@@ -3153,7 +3153,7 @@ MH.screen({id:'notif-settings',flow:'profile',title:'Notifications',
 
 /* ---------- I5 Privacy & safety ---------- */
 MH.screen({id:'privacy',flow:'profile',title:'Privacy & safety',
-  note:'Plain-language privacy controls. Location is area-only by design and ID details are never shown, so those are statements rather than switches.',
+  note:'Plain-language privacy controls. Chats are private (encrypted, opened only when reported), location is area-only by design and ID details are never shown, so those are statements rather than switches.',
   html:`${appbar({back:'settings',title:'Privacy & safety'})}
   ${sect('Profile visibility',card(`
     ${switchRow({title:'Show me in Discover',sub:'Turn off to stop new people finding you',on:true})}
@@ -3162,6 +3162,7 @@ MH.screen({id:'privacy',flow:'profile',title:'Privacy & safety',
   ${sect('Messages',card(`
     ${switchRow({title:'Read receipts',sub:'Let people see when you have read their message',on:true})}
     ${switchRow({title:'Show when I was last active',on:false})}`))}
+  ${sect('Your chats',`<div class="card pf-what"><div class="w"><span class="tile-ic sm">${i('lock')}</span><div><b>Your chats are private</b><span class="cap">They're encrypted, and we only open a chat if someone reports it.</span></div></div></div>`)}
   ${sect('Location',`<div class="card pf-what"><div class="w"><span class="tile-ic sm">${i('pin')}</span><div><b>Area only: HSR Layout</b><span class="cap">People see your area, never your exact address. Share it in a chat when you're ready.</span></div></div></div>`)}
   ${sect('Verification',`<div class="card pf-what"><div class="w"><span class="tile-ic sm lime">${i('shieldCheck')}</span><div><b>Your ID details are never shown</b><span class="cap">Others only see the Verified badge. We keep your name, age and a yes/no verified flag, nothing else.</span></div></div></div>`)}
   ${sect('Your data',card(`
@@ -3205,6 +3206,7 @@ const FAQ=[
   ['Why verify with DigiLocker?',"It proves you're a real person using a government ID, without us seeing or storing the document. We keep only your name, age and a yes/no verified flag."],
   ['How do hellos work?',"Say hi with a short note. If they say hi back, you match and can chat. If they pass, they won't be shown to you again and you're never told."],
   ['How does Split work?','Add a shared expense in My Home and pick who it is split between. MachaHub keeps a running balance, and you can settle up over UPI whenever you like.'],
+  ['Can MachaHub read my chats?',"Your chats are private. They're encrypted, and we only open a chat if someone reports it. Then our safety team checks that one conversation, and every check is logged. Chats aren't end-to-end encrypted, which is what lets us look into a report."],
   ['Is MachaHub free?',"Yes. There's no subscription. We show a few clearly labelled sponsored cards, never in chats or while you're in the middle of something."]
 ];
 MH.screen({id:'help',flow:'profile',title:'Help',
@@ -3230,7 +3232,7 @@ MH.screen({id:'legal',flow:'profile',title:'Terms & privacy',
     <h2 class="mt8">What we keep, and why</h2>
     <ul>
       <li>${i('check')}<span>Your profile, photos and answers, so the right people can find you.</span></li>
-      <li>${i('check')}<span>Your chats, so you can read them later.</span></li>
+      <li>${i('check')}<span><b>Your chats are private.</b> They're encrypted, and we only open a chat if someone reports it.</span></li>
       <li>${i('check')}<span>Your name, age and a yes/no verified flag from DigiLocker. Never your ID number or document.</span></li>
       <li>${i('check')}<span>Household expenses you're part of, so balances add up for everyone.</span></li>
       <li>${i('check')}<span>We never sell your data. Download or delete it any time.</span></li>
