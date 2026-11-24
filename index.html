@@ -299,6 +299,21 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;bac
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
+/* Mate modes: the mode tab and the 4th tab show the variant for the phone's mode (or the app's). */
+.nav .mo{display:none}
+html[data-mode="flat"] .phone:not([data-mode]) .nav .mo[data-m="flat"],.phone[data-mode="flat"] .nav .mo[data-m="flat"]{display:flex}
+html[data-mode="act"] .phone:not([data-mode]) .nav .mo[data-m="act"],.phone[data-mode="act"] .nav .mo[data-m="act"]{display:flex}
+html[data-mode="cf"] .phone:not([data-mode]) .nav .mo[data-m="cf"],.phone[data-mode="cf"] .nav .mo[data-m="cf"]{display:flex}
+html:not([data-mode]) .phone:not([data-mode]) .nav .mo[data-m="flat"]{display:flex}
+.nav .mt-l{display:inline-flex;align-items:center;gap:1px;white-space:nowrap}
+.nav [data-modetab]{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.mode-pop{position:absolute;inset:0;z-index:30}
+.mode-sheet .ms-row{min-height:64px}
+.mode-sheet .ms-row[aria-disabled="true"] b{color:var(--sub)}
+.mode-sheet .ms-on{width:24px;height:24px;border-radius:50%;background:var(--teal);color:#F8F3E9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mode-sheet .ms-on svg.i{width:14px;height:14px;stroke-width:2.6}
+.tile-ic.ghost{background:transparent;border:1px solid var(--border);color:var(--sub)}
+
 </style>
 <style>
 /* App mode: the prototype as an installable web app. One screen fills the device,
@@ -371,6 +386,9 @@ window.MH_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcm
    Screens live in prototype/screens/*.js and call MH.flow() and MH.screen(). No business logic. */
 (function(){
 const P = {
+  rocket:'<path d="M12.5 15.5 8.5 11.5C10 7 13.5 4 19.5 4.5 20 10.5 17 14 12.5 15.5z"/><path d="M8.5 11.5H5l2.5-3.5h4M12.5 15.5V19l3.5-2.5v-4"/><path d="M7 17c-1.2.4-2.2 1.6-2.5 3.5 1.9-.3 3.1-1.3 3.5-2.5"/><circle cx="15" cy="9" r="1.3"/>',
+  linkedin:'<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><path d="M8 10.5V16M8 7.6v.01M11.5 16v-5.5M11.5 13.2c0-1.7 1-2.7 2.3-2.7s2.2 1 2.2 2.7V16"/>',
+  target:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/>',
   sliders:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
   shield:'<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/>',
   shieldCheck:'<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
@@ -499,11 +517,45 @@ const MH = window.MH = {
   }
 };
 
-const TABS=[['home','Home','home'],['discover','Discover','compass'],['chats','Chats','chat'],['myhome','My Home','key'],['profile','Profile','user']];
-const TAB_TARGET={home:'home',discover:'discover',chats:'chats',myhome:'myhome-dash',profile:'profile'};
+/* Mate modes. One account, a mate profile per mode. The first tab is the mode tab: tap opens the
+   mode's Home, hold (or tap again while on it) opens the mode sheet. Discover and the 4th tab follow
+   the mode. '@key' in data-go resolves against the mode of the phone (or the app's current mode). */
+const MODES = {
+  flat:{name:'Flatmate',long:'Flatmate',icon:'home',home:'home',first:'home-first',discover:'discover',space:'myhome-dash',spaceL:'My Home',spaceI:'key',start:'place',sub:'HSR 2BHK · 6 new matches'},
+  act:{name:'Activity',long:'Activity mate',icon:'pulse',home:'act-home',first:'act-home',discover:'act-discover',space:'act-plans',spaceL:'Plans',spaceI:'calendar',start:'act-what',sub:'Badminton, running · 5 new players'},
+  cf:{name:'Co-founder',long:'Co-founder',icon:'bulb',home:'cf-home',first:'cf-home',discover:'cf-discover',space:'cf-build',spaceL:'Build',spaceI:'rocket',start:'cf-idea',sub:'Looking for a tech co-founder · 3 new'}
+};
+MH.MODES = MODES;
+const curMode = el=>{ const ph=el&&el.closest&&el.closest('.phone'); return (ph&&ph.dataset.mode)||document.documentElement.dataset.mode||'flat'; };
+MH.curMode = curMode;
+const resolve = (id,el)=> id && id[0]==='@' ? (MODES[curMode(el)]||MODES.flat)[id.slice(1)] : id;
+MH.resolve = resolve;
+const mo = (m,inner,attrs='')=>`<button class="mo" data-m="${m}" ${attrs}>${inner}</button>`;
 function nav(active){
-  return `<nav class="nav" aria-label="Main">${TABS.map(([k,l,i])=>`<button ${k===active?'aria-current="page"':''} data-go="${TAB_TARGET[k]}">${ic(i)}${l}${k==='chats'?'<span class="count-badge" aria-label="2 unread">2</span>':''}</button>`).join('')}</nav>`;
+  const cur = k=>k===active?'aria-current="page"':'';
+  const modeTab = Object.entries(MODES).map(([m,o])=>mo(m,`${ic(o.icon)}<span class="mt-l">${o.name}${ic('down','width:11px;height:11px;stroke-width:2.6')}</span>`,`${cur('home')} data-modetab data-go="@home" aria-label="${o.name} mode. Hold, or tap again, to switch mode" aria-haspopup="dialog"`)).join('');
+  const space = Object.entries(MODES).map(([m,o])=>mo(m,`${ic(o.spaceI)}${o.spaceL}`,`${cur('myhome')} data-go="@space"`)).join('');
+  return `<nav class="nav" aria-label="Main">${modeTab}<button ${cur('discover')} data-go="@discover">${ic('compass')}Discover</button><button ${cur('chats')} data-go="chats">${ic('chat')}Chats<span class="count-badge" aria-label="2 unread">2</span></button>${space}<button ${cur('profile')} data-go="profile">${ic('user')}Profile</button></nav>`;
 }
+/* The mode sheet: all four modes, Travel still coming soon. Drawn into the current phone. */
+MH.modeSheet = (m='flat',live=true)=>`<div class="scrim" ${live?'data-close-modes':'data-back'}></div>
+  <div class="sheet mode-sheet" role="dialog" aria-modal="true" aria-labelledby="ms-t-${live?'l':'s'}">
+    <div class="grab"></div>
+    <h2 id="ms-t-${live?'l':'s'}" style="font-size:20px">Switch mate type</h2>
+    <p class="cap" style="margin:4px 0 14px">Your chats, verification and settings stay the same.</p>
+    <div class="card list" role="radiogroup" aria-label="Mate type">
+      ${Object.entries(MODES).map(([k,o])=>`<button class="li ms-row" role="radio" aria-checked="${k===m}" data-pick-mode="${k}"><span class="tile-ic sm">${ic(o.icon)}</span><span class="t"><b>${o.long}</b><span class="cap">${o.sub}</span></span>${k===m?`<span class="ms-on">${ic('check')}</span>`:''}</button>`).join('')}
+      <button class="li ms-row" aria-disabled="true" data-toast="Travel mates are coming soon. We'll let you know."><span class="tile-ic sm ghost">${ic('bag')}</span><span class="t"><b>Travel mate</b><span class="cap">Coming soon</span></span></button>
+    </div>
+    <button class="btn btn-secondary mt16" data-go="my-modes">${ic('gear','width:18px;height:18px')}Manage mate types</button>
+  </div>`;
+function openModes(ph){
+  if(!ph || ph.querySelector('.mode-pop')) return;
+  const w=document.createElement('div'); w.className='mode-pop'; w.innerHTML=MH.modeSheet(curMode(ph)); ph.appendChild(w);
+  const first=w.querySelector('[aria-checked="true"]'); if(first) try{first.focus({preventScroll:true})}catch(_){}
+}
+function closeModes(ph){ const w=ph&&ph.querySelector('.mode-pop'); if(w) w.parentNode.removeChild(w); }
+MH.openModes=openModes;
 
 /* ---------- build the overview ---------- */
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -525,7 +577,7 @@ function build(){
       const slot=document.createElement('div'); slot.className='slot'; slot.id='s-'+s.id;
       const cls=['phone']; if(s.tab) cls.push('tabbed'); if(s.bar) cls.push('hasbar');
       slot.innerHTML=`<div class="label"><b>${s.num}</b>${s.title}</div>${s.note?`<div class="snote">${s.note}</div>`:''}
-        <div class="${cls.join(' ')}" data-screen="${s.id}">${s.raw?s.html:`<div class="scr">${s.html}</div>`}${s.bar?`<div class="bar">${s.bar}</div>`:''}${s.tab?nav(s.tab):''}${s.overlay||''}<div class="toast" role="status"></div></div>`;
+        <div class="${cls.join(' ')}" data-screen="${s.id}"${s.mode?` data-mode="${s.mode}"`:''}>${s.raw?s.html:`<div class="scr">${s.html}</div>`}${s.bar?`<div class="bar">${s.bar}</div>`:''}${s.tab?nav(s.tab):''}${s.overlay||''}<div class="toast" role="status"></div></div>`;
       row.appendChild(slot);
       sideHtml+=`<button data-jump="${s.id}"><b>${s.num}</b>${s.title}</button>`;
     });
@@ -542,6 +594,8 @@ function build(){
 function phoneOf(id){ return $(`[data-screen="${id}"]`); }
 function go(id,{push=true}={}){
   if(!byId[id]){ console.warn('No screen',id); return; }
+  if(byId[id].mode){ document.documentElement.dataset.mode=byId[id].mode; try{localStorage.setItem('mh-mode',byId[id].mode)}catch(_){} }
+  $$('.mode-pop').forEach(w=>w.parentNode.removeChild(w));
   const moved = push && state.cur && state.cur!==id;
   if(moved) state.hist.push(state.cur);
   state.cur=id;
@@ -575,6 +629,13 @@ document.addEventListener('click',e=>{
   const t=e.target;
   const jump=t.closest('[data-jump]'); if(jump){ go(jump.dataset.jump,{push:false}); return; }
   if(!t.closest('.phone')) return;
+  const ph0=t.closest('.phone');
+  if(t.closest('[data-close-modes]')){ closeModes(ph0); return; }
+  const pick=t.closest('[data-pick-mode]');
+  if(pick){ const m=pick.dataset.pickMode; document.documentElement.dataset.mode=m; closeModes(ph0); go(MODES[m].home); return; }
+  const mt=t.closest('[data-modetab]');
+  if(mt){ e.preventDefault(); if(holdFired){ holdFired=false; return; }
+    if(mt.getAttribute('aria-current')==='page'){ openModes(ph0); return; } }
   const radio=t.closest('[role=radio]');
   if(radio){ const g=radio.closest('[role=radiogroup]'); if(g) $$('[role=radio]',g).forEach(r=>{r.setAttribute('aria-checked',r===radio); r.classList.toggle('on',r===radio && r.classList.contains('chip'));}); }
   const cb=t.closest('[role=checkbox]'); if(cb) cb.setAttribute('aria-checked',cb.getAttribute('aria-checked')!=='true');
@@ -583,11 +644,18 @@ document.addEventListener('click',e=>{
   const tab=t.closest('[role=tab]');
   if(tab){ const l=tab.closest('[role=tablist]'); $$('[role=tab]',l).forEach(x=>x.setAttribute('aria-selected',x===tab));
     const ph=tab.closest('.phone'); if(tab.dataset.panel){ $$('[data-tabpanel]',ph).forEach(p=>p.hidden=p.dataset.tabpanel!==tab.dataset.panel); } }
-  const g=t.closest('[data-go]'); if(g){ e.preventDefault(); go(g.dataset.go);
-    if(g.dataset.toast){ const ph=phoneOf(g.dataset.go); setTimeout(()=>toast(ph.firstElementChild,g.dataset.toast),350); } return; }
+  const g=t.closest('[data-go]'); if(g){ e.preventDefault(); const to=resolve(g.dataset.go,g); go(to);
+    if(g.dataset.toast){ const ph=phoneOf(to); setTimeout(()=>toast(ph.firstElementChild,g.dataset.toast),350); } return; }
   const b=t.closest('[data-back]'); if(b){ e.preventDefault(); back(b.dataset.back); return; }
   const ts=t.closest('[data-toast]'); if(ts){ toast(ts,ts.dataset.toast); return; }
 });
+
+/* Hold the mode tab to open the mode sheet. */
+let holdFired=false, holdT=null;
+document.addEventListener('pointerdown',e=>{ const mt=e.target.closest&&e.target.closest('[data-modetab]'); if(!mt) return;
+  holdFired=false; clearTimeout(holdT); holdT=setTimeout(()=>{ holdFired=true; if(navigator.vibrate) try{navigator.vibrate(12)}catch(_){} openModes(mt.closest('.phone')); },450); });
+['pointerup','pointercancel','pointerleave'].forEach(ev=>document.addEventListener(ev,()=>clearTimeout(holdT),true));
+document.addEventListener('contextmenu',e=>{ if(e.target.closest&&e.target.closest('[data-modetab]')) e.preventDefault(); });
 
 /* ---------- overview controls ---------- */
 function setPlay(on){
@@ -628,6 +696,7 @@ MH.bootApp=function({start='splash'}={}){
   $('#flow').classList.add('play');
   let saved=null; try{saved=localStorage.getItem('mh-theme')}catch(_){}
   MH.setTheme(saved||'light');
+  try{ const m=localStorage.getItem('mh-mode'); if(m && MODES[m]) document.documentElement.dataset.mode=m; }catch(_){}
   const h=location.hash.slice(1);
   const first=(h && byId[h] && h!=='splash') ? h : start;
   // Base entry: a deep link opened cold has Welcome underneath it, so back never leaves the app.
@@ -740,9 +809,9 @@ MH.screen({id:'welcome',flow:'start',title:'Welcome',
   html:`
   <div class="welcome-top">${logo(96)}<div class="wordmark">Macha<span>Hub</span></div><p class="lead" style="margin:0;font-size:17px">Find your mate. Do more together.</p></div>
   <div class="gap8 mt32">
-    <div class="card vrow"><div class="tile-ic">${i('sliders')}</div><div><b>Matched on how you live</b><span class="cap">Budget, sleep, habits, not just the area</span></div></div>
+    <div class="card vrow"><div class="tile-ic">${i('sliders')}</div><div><b>Matched on what matters</b><span class="cap">How you live, play and work, not just a photo</span></div></div>
     <div class="card vrow"><div class="tile-ic">${i('shieldCheck')}</div><div><b>Verified profiles</b><span class="cap">More confidence in every connection</span></div></div>
-    <div class="card vrow"><div class="tile-ic">${i('people')}</div><div><b>Flatmates, not listings</b><span class="cap">No brokers, no property ads, no spam</span></div></div>
+    <div class="card vrow"><div class="tile-ic">${i('people')}</div><div><b>People, not listings</b><span class="cap">Flatmates, activity mates and co-founders. No brokers, no spam</span></div></div>
   </div>
   <div class="foot">
     <button class="btn btn-primary" data-go="phone">${i('phone')}Continue with phone number</button>
@@ -794,13 +863,14 @@ MH.screen({id:'about',flow:'start',title:'About you',
 (function(){
 const {i,appbar} = MH;
 
-MH.flow('onboarding','Onboarding','Category, mode, budget and area, an optional "your place" step for people who have a room, the five lifestyle rows we match on, and a payoff screen that shows the value before we ask for ID.');
+MH.flow('onboarding','Onboarding','Pick a mate type (flatmate, activity mate or co-founder; each has its own short path). The flatmate path: mode, budget and area, an optional "your place" step for people who have a room, the five lifestyle rows we match on, and a payoff screen that shows the value before we ask for ID.');
 
 MH.css(`
 [data-place="yes"] .only-no,[data-place="no"] .only-yes{display:none!important}
 .cats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}
 .cat{position:relative;text-align:left;display:flex;flex-direction:column;gap:14px;padding:18px 16px;min-height:164px;border-radius:var(--r-card);border:1.5px solid transparent;background:var(--card);box-shadow:var(--shadow)}
-.cat[aria-pressed="true"]{border-color:var(--ink)}
+.cat[aria-pressed="true"],.cat[aria-checked="true"]{border-color:var(--ink)}
+.cat[role=radio] .check{display:none}.cat[aria-checked="true"] .check{display:flex}
 .cat[aria-disabled="true"]{box-shadow:none;background:transparent;border:1.5px dashed var(--border);cursor:default}
 .cat[aria-disabled="true"] .tile-ic{background:transparent;border:1px solid var(--border);color:var(--sub)}
 .cat .name{font:600 17px Poppins,sans-serif;margin-top:auto}
@@ -839,17 +909,24 @@ MH.css(`
 `);
 
 MH.screen({id:'who',flow:'onboarding',title:'Who are you looking for',
-  note:'Flatmate is live. The other categories are visible so people know they are coming, but cannot be picked yet.',
-  html:`${MH.step(2,7,'about')}
+  note:'Flatmate, Activity mate and Co-founder can be picked; Travel is still coming soon. Pick one to start: the rest of onboarding is that mate type\'s own short path. More mate types are added later from Profile, and switched with the first tab.',
+  html:`${MH.step(2,8,'about')}
   <h1>Who are you looking for?</h1>
-  <p class="lead">We're starting with flatmates. More kinds of mates are on the way.</p>
-  <div class="cats">
-    <button class="cat" aria-pressed="true"><span class="status live ink">Live now</span><div class="tile-ic">${i('home')}</div><div class="name">Flatmate</div><span class="check">${i('check')}</span></button>
-    <button class="cat" aria-disabled="true" data-toast="Co-founder mates are coming soon"><div class="tile-ic">${i('bulb')}</div><div class="name">Co-founder</div><div class="st">Coming soon</div></button>
+  <p class="lead">Pick one to start. You can add more later.</p>
+  <div class="cats" role="radiogroup" aria-label="Mate type">
+    <button class="cat" role="radio" aria-checked="true" data-cat="flat"><div class="tile-ic">${i('home')}</div><div class="name">Flatmate</div><div class="st">Share a home</div><span class="check">${i('check')}</span></button>
+    <button class="cat" role="radio" aria-checked="false" data-cat="cf"><div class="tile-ic">${i('bulb')}</div><div class="name">Co-founder</div><div class="st">Build a company</div><span class="check">${i('check')}</span></button>
     <button class="cat" aria-disabled="true" data-toast="Travel mates are coming soon"><div class="tile-ic">${i('bag')}</div><div class="name">Travel mate</div><div class="st">Coming soon</div></button>
-    <button class="cat" aria-disabled="true" data-toast="Activity mates are coming soon"><div class="tile-ic">${i('pulse')}</div><div class="name">Activity mate</div><div class="st">Coming soon</div></button>
+    <button class="cat" role="radio" aria-checked="false" data-cat="act"><div class="tile-ic">${i('pulse')}</div><div class="name">Activity mate</div><div class="st">Sports, fitness, going out</div><span class="check">${i('check')}</span></button>
   </div>`,
-  bar:`<button class="btn btn-primary" data-go="place">Continue</button>`});
+  bar:`<button class="btn btn-primary" data-go="@start">Continue</button>`,
+  mount(ph){ ph.querySelectorAll('[data-cat]').forEach(b=>b.addEventListener('click',()=>{
+    document.documentElement.dataset.mode=b.dataset.cat;
+    const tot={flat:document.documentElement.dataset.place==='no'?7:8,act:7,cf:8}[b.dataset.cat];
+    const n=ph.querySelector('.stepn'), bar=ph.querySelector('.progress');
+    if(n) n.textContent=`2 of ${tot}`; if(bar){ bar.setAttribute('aria-label',`Step 2 of ${tot}`); bar.setAttribute('aria-valuemax',tot); bar.firstElementChild.style.width=`${2/tot*100}%`; }
+  })); },
+  onShow(ph){ const m=document.documentElement.dataset.mode||'flat'; ph.querySelectorAll('[data-cat]').forEach(b=>b.setAttribute('aria-checked',b.dataset.cat===m)); }});
 
 MH.screen({id:'place',flow:'onboarding',title:'Do you have a place',
   note:'Sets the profile mode, and the path. "Yes" asks for the area and move-in date, then adds the Your place step (rent share, photos). "Not yet" asks for a budget and areas, then goes straight to How you live.',
@@ -950,7 +1027,9 @@ const IMP=['Flexible','Important','Dealbreaker'];
 const imp=l=>`<button class="imp" data-l="${l}" aria-label="How much this matters: ${IMP[l]}. Tap to change"><span>${IMP[l]}</span></button>`;
 const qrow=([ic,l,o,s,m,v],extra='')=>`<div class="q"><div class="ql">${i(ic)}${l}${imp(m)}</div><div class="seg${v?' v':''}" role="radiogroup" aria-label="${l}">${o.map((x,k)=>`<button role="radio" aria-checked="${k===s}">${x}</button>`).join('')}</div>${extra}</div>`;
 const legend=`<div class="legend"><span>Tap the tag on a row:</span><span><b>Flexible</b> · fine either way</span><span><b>Important</b> · counts more</span><span><b>Dealbreaker</b> · only show matches</span></div>`;
+MH.qrow=qrow; MH.impLegend=legend; MH.imp=imp;
 const cycle=ph=>ph.querySelectorAll('.imp').forEach(b=>b.onclick=e=>{e.stopPropagation();const l=(+b.dataset.l+1)%3;b.dataset.l=l;b.firstElementChild.textContent=IMP[l];b.setAttribute('aria-label',`How much this matters: ${IMP[l]}. Tap to change`);});
+MH.impCycle=cycle;
 const sleepTimes=`<div class="slp"><button class="input" data-toast="Opens a time picker"><span>Asleep by</span><b>12:30 am</b></button><button class="input" data-toast="Opens a time picker"><span>Up by</span><b>8:30 am</b></button></div><div class="cap mt8">Weekdays, optional. Shown on your profile, not used for matching.</div>`;
 const LIVE1=[['moon','Sleep',['Early bird','Night owl','It varies'],1,1],['sparkle','Cleanliness',['Spotless','Tidy enough','Relaxed'],1,1],['broom','House help',['Cook and cleaner','Cleaner only','We\'ll manage'],0,0],['door','Guests over',['Rarely','Sometimes','Often'],1,0]];
 const LIVE2=[['leaf','Food at home',['Veg only','Eggs okay','Anything'],0,1],['noSmoke','Smoking',['I prefer a smoke-free home','Occasional smoking is okay','Smoking is okay'],0,2,1],['glass','Drinking',['I prefer an alcohol-free home','Now and then is fine','Drinking is fine'],1,0,1],['paw','Pets',['No pets, please','Pets are welcome','I have a pet'],1,0]];
@@ -1009,11 +1088,12 @@ function setPlace(v){ document.documentElement.dataset.place=v; const ph=documen
 const fit=ph=>{
   const id=ph.dataset.screen, path=PATH[document.documentElement.dataset.place]||PATH.yes, k=path.indexOf(id);
   if(k<0) return;
+  if(id==='who' && (document.documentElement.dataset.mode||'flat')!=='flat') return;
   const n=ph.querySelector('.stepn'), bar=ph.querySelector('.progress'), back=ph.querySelector('.stephead [data-back]'), next=ph.querySelector('.bar [data-go]');
   if(n) n.textContent=`${k+1} of ${path.length}`;
   if(bar){ bar.setAttribute('aria-label',`Step ${k+1} of ${path.length}`); bar.setAttribute('aria-valuenow',k+1); bar.setAttribute('aria-valuemax',path.length); bar.firstElementChild.style.width=`${(k+1)/path.length*100}%`; }
   if(back && k>0) back.dataset.back=path[k-1];
-  if(next && k<path.length-1 && id!=='style') next.dataset.go=path[k+1];
+  if(next && k<path.length-1 && id!=='style' && id!=='who') next.dataset.go=path[k+1];
 };
 if(!document.documentElement.dataset.place) document.documentElement.dataset.place='yes';
 PATH.yes.forEach(id=>{ const s=MH.byId[id]; if(!s) return; const prev=s.onShow, prevM=s.mount;
@@ -1130,8 +1210,8 @@ MH.screen({id:'notif-ask',flow:'verify',title:'Notifications',
       <div class="vf-notif" style="border-top:1px solid var(--border)"><span class="tile-ic sm">${i('dish')}</span><div><b>Your turn: dishes tonight</b><div class="cap">Chores rota</div></div></div>
     </div>
   </div>`,
-  bar:`<button class="btn btn-primary" data-go="home-first" data-toast="Your phone asks for permission next">Turn on notifications</button>
-  <button class="btn btn-ghost" data-go="home-first">Not now</button>`});
+  bar:`<button class="btn btn-primary" data-go="@first" data-toast="Your phone asks for permission next">Turn on notifications</button>
+  <button class="btn btn-ghost" data-go="@first">Not now</button>`});
 })();
 
 </script>
@@ -1140,7 +1220,7 @@ MH.screen({id:'notif-ask',flow:'verify',title:'Notifications',
 (function(){
 const {i,appbar,av} = MH;
 
-MH.flow('home','Home','Stacked sections: your flatmate search, living-together tools, one native ad, recent activity, and a quiet line at the end saying more mates are coming. A first-visit state guides new people; the everyday state is what returning users see.');
+MH.flow('home','Home','Flatmate mode. Stacked sections: your flatmate search, living-together tools, one native ad and recent activity. The first tab is the mode tab (hold or tap again to switch mate type). A first-visit state guides new people; the everyday state is what returning users see.');
 
 MH.css(`
 .hm-head{display:flex;align-items:center;gap:10px;margin-bottom:18px}
@@ -1158,9 +1238,6 @@ MH.css(`
 .hm-nudge{display:flex;align-items:center;gap:12px;margin-top:18px;padding:12px 14px;border-radius:14px;background:rgba(248,243,233,.12);border:0;color:#F8F3E9;width:100%;text-align:left;min-height:56px}
 .hm-nudge > span:not(.tile-ic){flex:1;font-size:13px;line-height:1.4}
 .hm-nudge b{display:block;font-size:14px}
-.hm-more{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;margin-top:20px;padding:10px 14px;border:1px dashed var(--border);border-radius:14px;background:transparent;text-align:left;font-size:13px;line-height:1.4;color:var(--sub)}
-.hm-more > svg.i{width:18px;height:18px;flex-shrink:0;color:var(--sub)}
-.hm-more span{flex:1}
 .hm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hm-tool{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:16px;border:0;text-align:left;min-height:122px;color:var(--text)}
 .hm-tool b{font-size:15px;font-weight:600;display:block;margin-bottom:2px}
@@ -1189,11 +1266,9 @@ const head = (title)=>`<div class="hm-head">
   <button class="iconbtn raised dot-badge" aria-label="Notifications, 3 new" data-go="notifications">${i('bell')}</button>
   <button class="hm-me" aria-label="Your profile" data-go="profile">AK</button>
 </div>`;
-/* Everything before Home is flatmate-only, so other mate types get one quiet line, not a grid that competes with the hero. */
-const more = `<button class="hm-more" data-toast="We'll let you know when new mates open">${i('sparkle')}<span>More mates coming: co-founder, travel and activity</span></button>`;
 
 MH.screen({id:'home-first',flow:'home',title:'Home · first visit',tab:'home',
-  note:'For someone who just finished onboarding. They are not verified yet; that is asked at their first hello, and the hero nudge lets them do it early. A getting-started list replaces Recent; no ad in a first session. Other mate types are one quiet line at the end, since everything so far has been about flatmates.',
+  note:'For someone who just finished onboarding. They are not verified yet; that is asked at their first hello, and the hero nudge lets them do it early. A getting-started list replaces Recent; no ad in a first session. A one-time hint points at the mode tab: hold it (or tap it again) to switch mate type.',
   html:`${head('Welcome, Arjun')}
   <div class="hm-hero">
     <div class="k">Your flatmate search</div>
@@ -1215,10 +1290,10 @@ MH.screen({id:'home-first',flow:'home',title:'Home · first visit',tab:'home',
       <div class="spacer"><div class="strong">Once you match, set up My Home</div><div class="cap mt8" style="margin-top:2px">Split bills, get rent reminders and share chores with your flatmate.</div>
       <button class="textbtn" data-go="myhome-empty" style="padding:0">See how it works</button></div>
     </div></div>
-  ${more}`});
+`});
 
 MH.screen({id:'home',flow:'home',title:'Home · everyday',tab:'home',
-  note:'A returning, verified user who already shares a home. Exactly one native ad, styled like any card, with a dismiss. Co-founder, travel and activity mates are a single low-key line after Recent, so nothing competes with the flatmate hero.',
+  note:'A returning, verified user who already shares a home. Exactly one native ad, styled like any card, with a dismiss. Other mate types live behind the mode tab, so nothing competes with the flatmate hero.',
   html:`${head('Good evening, Arjun')}
   <div class="hm-hero">
     <div class="k">Your flatmate search</div>
@@ -1246,7 +1321,7 @@ MH.screen({id:'home',flow:'home',title:'Home · everyday',tab:'home',
       <button class="li" data-go="hellos">${av('KS','a3')}<span class="t"><b>Kavya</b> said hi<span class="cap">91% match · Koramangala</span></span><time>5h</time></button>
       <button class="li" data-go="expense-detail">${av('AR','a1')}<span class="t"><b>Ananya</b> added Groceries<span class="cap">₹1,860 · you owe ₹930</span></span><time>3d</time></button>
     </div></div>
-  ${more}`,
+`,
   mount(ph){ const b=ph.querySelector('[data-hide-ad]'); if(b) b.addEventListener('click',e=>{ e.stopPropagation(); const s=ph.querySelector('#hm-adsect'); s.style.transition='opacity .3s'; s.style.opacity=0; MH.toast(b,'Sponsored card hidden. You will see fewer like this.'); setTimeout(()=>s.style.display='none',300); }); }
 });
 
@@ -1826,6 +1901,10 @@ MH.css(`
 .ct-row .msg{font-size:14px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .ct-row.unread .msg{color:var(--text);font-weight:500}
 .ct-row .ct-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:12px;color:var(--sub)}
+.ct-row .nm{min-width:0}
+.ct-row .ct-side{flex-shrink:0}
+.ct-row .ct-mtag{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--sub);border:1px solid var(--border);border-radius:50%}
+.ct-row .ct-mtag svg.i{width:12px;height:12px}
 .ct-row .pc{font-size:11px;font-weight:600;color:var(--ink);background:var(--tint);padding:2px 7px;border-radius:99px}
 
 /* thread */
@@ -1965,14 +2044,15 @@ const threadHtml = (menu=true)=>`<div class="ct-wrap">${head(menu)}
 </div>`;
 
 /* 1 · Inbox */
-const row = (ini,tone,n,pct,last,t,unread=0)=>`<button class="ct-row ${unread?'unread':''}" data-go="chat">
+const MTAG={flat:['home','Flatmate'],act:['pulse','Activity'],cf:['bulb','Co-founder']};
+const row = (ini,tone,n,pct,last,t,unread=0,go='chat',m='flat')=>`<button class="ct-row ${unread?'unread':''}" data-go="${go}">
   <span class="ct-avw">${av(ini,tone,'s48')}${vtick}</span>
-  <span class="t"><span class="nm">${n}<span class="pc">${pct}%</span></span><span class="msg">${last}</span></span>
+  <span class="t"><span class="nm">${n}<span class="pc">${pct}%</span><span class="ct-mtag" role="img" aria-label="${MTAG[m][1]} chat" title="${MTAG[m][1]}">${i(MTAG[m][0])}</span></span><span class="msg">${last}</span></span>
   <span class="ct-side"><time>${t}</time>${unread?`<span class="count-badge" aria-label="${unread} unread">${unread}</span>`:''}</span>
 </button>`;
 
 MH.screen({id:'chats',flow:'chats',title:'Chats',tab:'chats',
-  note:'Only people who both said hi appear here, all verified. No ads in chat, ever.',
+  note:'One inbox for every mate type, each chat tagged Flatmate, Activity or Co-founder. Only people who both said hi appear here, all verified. No ads in chat, ever.',
   html:`<div class="pagehead"><h1>Chats</h1></div>
   <div class="tabs" role="tablist" aria-label="Inbox">
     <button role="tab" aria-selected="true">Chats</button>
@@ -1981,6 +2061,8 @@ MH.screen({id:'chats',flow:'chats',title:'Chats',tab:'chats',
   <label class="input mt12">${i('search')}<span class="sr">Search chats</span><input placeholder="Search chats"></label>
   <div class="card list mt16" style="padding:0">
     ${row('AR','a1','Ananya',87,'Sunday 11 works. See you then!','10:42',2)}
+    ${row('RM','a4','Rahul',82,'Accepted: Badminton, Sat 7:00 am','9:05',0,'act-chat','act')}
+    ${row('FS','a5','Farah',86,'Sent you a build trial','Yesterday',0,'cf-chat','cf')}
     ${row('KS','a3','Kavya',91,'Haha same. Do you mind a cat?','Yesterday')}
     ${row('RK','a4','Rohan',81,'You: Let\'s talk this weekend then','Mon')}
     ${row('MI','a2','Meera',84,'You matched. Say hello.','Sat')}
@@ -2998,6 +3080,7 @@ MH.screen({id:'profile',flow:'profile',title:'Profile',tab:'profile',
     </div>
   </div>
   <div class="card list mt12">
+    ${row({icon:'people',title:'Your mate types',sub:'Flatmate, Activity mate, Co-founder',go:'my-modes'})}
     ${row({icon:'edit',title:'Edit profile',sub:'Photos, bio, how you live',go:'profile-edit'})}
     ${row({icon:'speech',title:'Your questions',sub:'2 questions · answered before anyone says hi',go:'my-questions'})}
     ${row({icon:'sliders',title:'Search preferences',sub:'HSR Layout, Koramangala · from 1 Dec',go:'filters'})}
@@ -3441,6 +3524,670 @@ MH.screen({id:'deleted',flow:'account',title:'Account deleted',raw:true,
     <p class="thanks">Thanks for being part of MachaHub.</p>
     <div class="foot"><button class="btn btn-primary" data-go="welcome">Close</button></div>
   </div>`});
+})();
+
+</script>
+<script>
+/* K · Mate modes: one account, a mate profile per mode. The first tab is the mode tab. */
+(function(){
+const {i,appbar} = MH;
+
+/* Flatmate screens belong to flatmate mode: their tab bar shows Flatmate and My Home. */
+['home-first','home','notifications','discover','filters','profile-view','say-hi','say-hi-host','match','discover-ad','discover-empty',
+ 'myhome-empty','home-create','home-invite','home-join','myhome-dash','home-members','member-actions','leave-home',
+ 'expenses','add-expense','expense-detail','bills','add-bill','settle','settle-done','rent','rent-setup','chores','add-chore','partner']
+ .forEach(id=>{ if(MH.byId[id] && !MH.byId[id].mode) MH.byId[id].mode='flat'; });
+
+MH.flow('modes','Mate modes','One account, a mate profile per mode. The first tab shows the current mode: tap it for that mode\'s Home; hold it, or tap it again while on it, to switch. Discover and the 4th tab (My Home, Plans or Build) follow the mode; chats, verification and settings are shared.');
+
+MH.css(`
+.mode-hint{position:absolute;left:10px;bottom:92px;z-index:15;max-width:230px;display:flex;gap:10px;align-items:flex-start;padding:12px 8px 12px 14px;border-radius:16px;background:var(--primary,#146C68);color:#F8F3E9;box-shadow:0 10px 30px rgba(17,25,24,.22);font-size:13px;line-height:1.4;animation:mhIn .4s .3s var(--ease) both}
+.mode-hint::after{content:"";position:absolute;left:28px;bottom:-7px;width:14px;height:14px;background:inherit;transform:rotate(45deg);border-radius:3px}
+.mode-hint b{display:block;font-size:14px}
+.mode-hint button{width:44px;height:44px;margin:-12px -6px -12px 0;border:0;background:transparent;color:#F8F3E9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mode-hint button svg{width:16px;height:16px}
+@keyframes mhIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.md-card{padding:16px}
+.md-top{display:flex;gap:12px;align-items:center}
+.md-top .t{flex:1;min-width:0}
+.md-top b{display:block;font:600 17px Poppins,sans-serif}
+.md-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.md-acts{display:flex;gap:8px;margin-top:12px}
+.md-acts .btn{flex:1}
+`);
+
+/* The one-time hint on the first Home, pointing at the mode tab. */
+const fh = MH.byId['home-first'];
+if(fh){
+  fh.overlay = (fh.overlay||'') + `<div class="mode-hint" role="note"><span><b>Your mate types live here</b>Hold this tab, or tap it again, to switch.</span><button aria-label="Hide hint" data-hide-hint>${i('x')}</button></div>`;
+  const pm = fh.mount;
+  fh.mount = ph=>{ pm&&pm(ph); const b=ph.querySelector('[data-hide-hint]'); if(b) b.addEventListener('click',e=>{ e.stopPropagation(); const h=b.closest('.mode-hint'); if(h) h.style.display='none'; }); };
+}
+
+MH.screen({id:'mode-switch',flow:'modes',title:'Switch mate type',tab:'home',mode:'flat',
+  note:'Hold the first tab, or tap it again while you are on it. All four mate types are listed; Travel is still coming soon. Picking one switches the whole app: Home, Discover and the 4th tab. Try it in "Use like an app".',
+  html:(MH.byId.home?MH.byId.home.html:'').replace(/ id="[^"]*"/g,''),
+  overlay:MH.modeSheet('flat',false)});
+
+const mcard = (m,status,meta,edit,extra='')=>{ const o=MH.MODES[m]; return `<div class="card md-card">
+  <div class="md-top"><span class="tile-ic">${i(o.icon)}</span><span class="t"><b>${o.long}</b><span class="status ok">${status}</span></span>
+    <button class="textbtn" data-pick-mode="${m}">Open</button></div>
+  <div class="md-meta">${meta.map(t=>`<span class="tag plain">${t}</span>`).join('')}</div>${extra}
+  <div class="md-acts"><button class="btn btn-secondary btn-sm" data-go="${edit}">${i('edit','width:18px;height:18px')}Edit</button><button class="btn btn-secondary btn-sm" data-go="pause">${i('pause','width:18px;height:18px')}Pause</button></div>
+</div>`; };
+
+MH.screen({id:'my-modes',flow:'modes',title:'Your mate types',
+  note:'From Profile. Each mate type has its own answers, Discover and hellos, and can be paused on its own. Adding one runs only its own questions; verification, chats and settings are shared.',
+  html:`${appbar({back:'profile',title:'Your mate types'})}
+  <p class="cap" style="margin:0 0 14px">Your ID check, chats and settings are shared. Each mate type has its own answers and matches.</p>
+  <div class="gap12">
+    ${mcard('flat','Showing in Discover',['Has a place · HSR Layout','₹14,500 share'],'place')}
+    ${mcard('act','Showing in Discover',['Badminton · Intermediate','Running · Steady','Stand-up'],'act-what')}
+    ${mcard('cf','Showing in Discover',['Has an idea · Fintech','Brings product, growth'],'cf-idea',`<div class="banner mt12" style="padding:10px 12px">${i('linkedin')}<span>LinkedIn connected. Needed to say hi as a co-founder.</span></div>`)}
+  </div>
+  <div class="sect"><div class="sect-h"><h3>Coming soon</h3></div>
+    <div class="card list">
+      <div class="li" style="cursor:default"><span class="tile-ic sm ghost">${i('bag')}</span><span class="t"><b>Travel mate</b><span class="cap">Tell me when it opens</span></span><button class="switch" role="switch" aria-checked="true" aria-label="Tell me when Travel mate opens"></button></div>
+    </div></div>`});
+})();
+
+</script>
+<script>
+/* L · Activity mate: sports, fitness and going out. Sports are a group inside it, with a level per sport. */
+(function(){
+const {i,appbar,av} = MH;
+
+/* ---------- Shared builders for the new mate types (also used by 13-cofounder.js) ---------- */
+const IMP=['Flexible','Important','Dealbreaker'];
+const ring = (p,s=116,w=10,l='match')=>MH.ring?MH.ring(p,s,w,l):`<div class="mt-ring" role="img" aria-label="${p}% compatible">${p}%</div>`;
+const anim = ph=>{ try{ MH.ringAnimate&&MH.ringAnimate(ph); }catch(_){} };
+const tagImp = l=>l?`<span class="mt-imp ${l===2?'d':''}">${IMP[l]}</span>`:'';
+const M = MH.mate = {
+  ring, anim, tagImp,
+  /* bars: [label, score] shown on the card */
+  bars:list=>`<div class="mt-bars">${list.map(([l,v])=>`<div class="mt-bar ${v<70?'low':''}"><span class="mt-bl">${l}</span><span class="mt-bt"><i data-w="${v}" style="width:${v}%"></i></span><span class="mt-bv">${v}</span></div>`).join('')}<div class="mt-diff">Where you differ</div></div>`,
+  both:list=>`<div class="mt-both"><div class="mt-k">You both</div><div class="chips">${list.map(([ic,t])=>`<span class="tag">${i(ic)}${t}</span>`).join('')}</div></div>`,
+  card:p=>`<article class="card mt-card" aria-label="${p.n}, ${p.a}, ${p.pct}% compatible">
+    <button class="mt-photo" data-go="${p.go}" aria-label="Open ${p.n}'s full profile">
+      <span class="verified">${i('shieldCheck')}Verified</span><span class="mt-count">${p.count}</span>
+      <span class="mt-ini" aria-hidden="true">${p.ini}</span><span class="mt-more">Full profile${i('chev')}</span></button>
+    <div class="mt-body">
+      <button class="mt-name" data-go="${p.go}">${p.n}, <span>${p.a}</span></button>
+      ${p.lines.map(([ic,t])=>`<div class="mt-line">${i(ic)}<span>${t}</span></div>`).join('')}
+      <div class="mt-compat">${ring(p.pct)}${M.bars(p.bars)}</div>
+      ${M.both(p.both)}
+    </div></article>`,
+  top:(p,menu=true)=>`<div class="mt-hero">
+    <div class="mt-car" aria-label="Photos of ${p.n}, 1 of 2"><div class="mt-slide"><span class="mt-ini big" aria-hidden="true">${p.ini}</span></div><div class="mt-slide alt">${i(p.alt||'image')}</div></div>
+    <div class="mt-dots" aria-hidden="true"><i class="on"></i><i></i></div>
+    <div class="mt-hero-top"><button class="iconbtn raised" data-back="${p.back}" aria-label="Back">${i('back')}</button>
+      ${menu?`<details class="mt-menu"><summary class="iconbtn raised" aria-label="More options">${i('moreV')}</summary><div class="card mt-pop">
+        <button class="li" data-toast="Profile link copied">${i('share')}<span class="t">Share profile</span></button>
+        <button class="li" data-go="report">${i('flag')}<span class="t">Report ${p.n}</span></button>
+        <button class="li danger" data-go="block">${i('block')}<span class="t">Block ${p.n}</span></button></div></details>`:''}</div>
+    <span class="verified mt-hero-v">${i('shieldCheck')}Verified with DigiLocker</span></div>
+  <div class="mt-pname mt20">${p.n}, <span>${p.a}</span></div>
+  ${p.lines.map(([ic,t])=>`<div class="mt-line">${i(ic)}<span>${t}</span></div>`).join('')}`,
+  /* rows: [label, score, mine, theirs, my importance, their importance] */
+  cmp:(p,rows,title,sub)=>`<div class="card mt-cmp">
+    <div class="mt-cmp-top">${ring(p.pct,96,9)}<div><b>${title}</b><span class="cap">${sub}</span></div></div>
+    <div class="divider" style="margin:16px 0 2px"></div>
+    ${rows.map(([l,v,me,th,mi,hi])=>`<div class="mt-row ${v<70?'low':''}"><div class="mt-row-h"><span>${l}</span><span>${v}%</span></div>
+      <span class="mt-bt"><i data-w="${v}" style="width:${v}%"></i></span>
+      <div class="mt-ans"><div><small>You${tagImp(mi)}</small>${me}</div><div><small>${p.n}${tagImp(hi)}</small>${th}</div></div></div>`).join('')}
+    <div class="mt-diff" style="margin-top:4px">Where you differ</div>
+    <p class="cap mt8">Tags show how much each answer matters. Dealbreakers filter matches; the percentage only ranks them.</p></div>`,
+  deal:(list,sub='Both of you pass')=>`<div class="sect"><div class="sect-h"><h3>Dealbreakers</h3><span class="cap">${sub}</span></div>
+    <div class="card pad mt-nn">${list.map(([t,s])=>`<div class="hstack">${i('checkCircle')}<span><b class="strong">${t}</b><span class="cap" style="display:block">${s}</span></span></div>`).join('')}</div></div>`,
+  qs:(n,list)=>`<div class="sect"><div class="sect-h"><h3>${n}'s questions</h3><span class="cap">You'll answer these to say hi</span></div>
+    <div class="card" style="padding:4px 2px">${list.map((q,k)=>`<div class="mt-qa"><span class="cap">Question ${k+1}</span><p>${q}</p></div>`).join('')}</div></div>`,
+  actions:(pass,hi,hiToast)=>`<div class="mt-actions">
+    <button class="btn btn-secondary mt-pass" data-toast="${pass}">${i('x')}Pass</button>
+    <button class="btn btn-primary" ${hi?`data-go="${hi}"`:''} ${hiToast?`data-toast="${hiToast}"`:''}>${i('wave')}Say hi</button></div>`,
+  head:(title,loc,locGo,me='AK')=>`<div class="hm-head"><div class="hi"><h1>${title}</h1><button class="hm-loc" data-go="${locGo}">${i('pin')}${loc}</button></div>
+    <button class="iconbtn raised dot-badge" aria-label="Notifications, 3 new" data-go="notifications">${i('bell')}</button>
+    <button class="hm-me" aria-label="Your profile" data-go="profile">${me}</button></div>`,
+  ad:(art,title,sub,cta)=>`<div class="sect" data-adsect><div class="card hm-ad"><div class="art">${i(art)}</div>
+    <div class="body"><div class="spons">Sponsored · [PARTNER]</div><b>${title}</b><div class="cap">${sub}</div>
+    <button class="cta" data-toast="Opens the [PARTNER] offer">${cta}${i('arrow','width:16px;height:16px')}</button></div>
+    <button class="iconbtn" aria-label="Dismiss sponsored card" data-hide-ad>${i('x')}</button></div></div>`,
+  adBind:ph=>{ const b=ph&&ph.querySelector('[data-hide-ad]'); if(b) b.addEventListener('click',e=>{ e.stopPropagation(); const s=b.closest('[data-adsect]'); s.style.transition='opacity .3s'; s.style.opacity=0; MH.toast(b,'Sponsored card hidden. You will see fewer like this.'); setTimeout(()=>s.style.display='none',300); }); },
+  /* A chat thread in the shared chat style (06-chats.js classes). */
+  thread:(p,body,extraBtn='')=>`<div class="ct-wrap">
+    <div class="ct-head"><button class="iconbtn" data-back="chats" aria-label="Back">${i('back')}</button>
+      <button class="ct-who" data-go="${p.go}"><span class="ct-avw">${av(p.ini,p.tone,'s32')}</span><span><b>${p.n}<span class="ct-vt" aria-label="Verified">${i('check')}</span></b><span class="cap">${p.sub}</span></span></button>
+      <details class="mt-menu"><summary class="iconbtn" aria-label="More options">${i('moreV')}</summary><div class="card mt-pop">
+        <button class="li" data-go="safety">${i('shield')}<span class="t">Safety tips</span></button>
+        <button class="li" data-go="report">${i('flag')}<span class="t">Report ${p.n}</span></button>
+        <button class="li danger" data-go="block">${i('block')}<span class="t">Block ${p.n}</span></button></div></details></div>
+    <div class="ct-thread">${body}</div>
+    <div class="ct-comp">${extraBtn}<label class="ct-in"><span class="sr">Message</span><input placeholder="Message ${p.n}"></label><button class="ct-send" data-toast="Sent" aria-label="Send">${i('send')}</button></div>
+  </div>`,
+  msg:(who,text,t)=>`<div class="ct-b ${who}">${text}<time>${t}</time></div>`
+};
+
+/* ---------- Activity ---------- */
+MH.flow('activity','Activity mate','Someone to play, train or go out with. Sports are a first-class group with a level per sport. Matching filters on a shared activity, distance, shared time slots and who you are comfortable meeting, then scores level, vibe and rhythm. Meetups are planned in chat, in a public place, and can be shared with a friend. No venue listings: court booking goes to a partner.');
+
+MH.css(`
+.impl{margin-left:auto;display:flex;align-items:center;min-height:44px}
+.impl span{display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;background:#243B3A;color:#F8F3E9}
+[data-theme="dark"] .impl span{background:#EEF1EC;color:#243B3A}
+.tk[aria-pressed="false"] > svg.i:first-child{display:none}
+.mt-filt.scrollx{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-24px;margin-right:-24px;padding:0 24px}
+.mt-filt.scrollx::-webkit-scrollbar{display:none}
+.mt-filt.scrollx .chip{flex-shrink:0}
+.ac-grp{margin-top:20px}
+.ac-grp h3{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ac-grp h3 svg{width:18px;height:18px;color:var(--ink)}
+.ac-slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ac-slots .chip{text-align:left;font-size:14px;justify-content:flex-start;height:auto;min-height:56px;padding:8px 14px;border-radius:14px;flex-direction:column;align-items:flex-start;gap:0;line-height:1.3}
+.ac-slots .chip small{font-size:12px;font-weight:500;color:var(--sub)}
+.ac-slots .chip[aria-pressed="true"] small{color:inherit;opacity:.85}
+.ac-next{display:flex;gap:12px;align-items:center;padding:14px 16px;width:100%;border:0;text-align:left;color:var(--text)}
+.ac-next .t{flex:1;min-width:0}
+.ac-next b{display:block;font-size:15px}
+.ac-plan{padding:16px}
+.ac-plan-h{display:flex;gap:12px;align-items:center}
+.ac-plan-h .t{flex:1;min-width:0}
+.ac-plan-h b{display:block;font:600 16px Poppins,sans-serif}
+.ac-plan .kv{padding:10px 0}
+.ac-wait{color:var(--sub);font-size:12px;font-weight:600}
+.ac-partner{display:flex;gap:14px;align-items:center;padding:16px}
+.ac-partner .t{flex:1;min-width:0}
+.ac-partner .lbl{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
+.ac-partner b{display:block;font-size:15px;margin:2px 0}
+.ac-plus{width:44px;height:44px;flex-shrink:0;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--ink);display:flex;align-items:center;justify-content:center}
+.ac-plus svg{width:20px;height:20px}
+`);
+
+const R = {n:'Rahul',a:29,ini:'RM',pct:82,go:'act-profile',back:'act-discover',alt:'pulse'};
+const PATH = 'Arjun · activity';
+
+/* 1 · What you want to do */
+const grp = (ic,t,list)=>`<div class="ac-grp"><h3>${i(ic)}${t}</h3><div class="chips">${list.map(([l,on])=>`<button class="chip tk" data-toggle aria-pressed="${!!on}">${i('check')}${l}</button>`).join('')}</div></div>`;
+MH.screen({id:'act-what',flow:'activity',title:'What you want to do',mode:'act',
+  note:'Pick up to five. Sports are a group here, not a separate mate type; each picked sport gets a level on the next screen. These are the hard filter: you only see people who share at least one.',
+  html:`${MH.step(3,7,'who')}
+  <h1>What do you want to do?</h1>
+  <p class="lead">Pick up to five. You'll only see people who share one.</p>
+  ${grp('target','Sports',[['Badminton',1],['Cricket'],['Football'],['Tennis'],['Pickleball'],['Swimming']])}
+  ${grp('pulse','Fitness',[['Gym'],['Running',1],['Cycling'],['Yoga'],['Trekking']])}
+  ${grp('sparkles','Going out',[['Movies'],['Concerts & events'],['Stand-up',1],['Board games'],['Food walks']])}
+  <p class="cap mt16">3 of 5 picked</p>`,
+  bar:`<button class="btn btn-primary" data-go="act-level">Continue</button>`});
+
+/* 2 · Level per sport */
+MH.screen({id:'act-level',flow:'activity',title:'Your level',mode:'act',
+  note:'Only sports get a level; going-out activities do not. The level gap is scored, and its tag says how much it matters (tap to cycle). A Dealbreaker here only shows people at your level.',
+  html:`${MH.step(4,7,'act-what')}
+  <h1>Your level</h1>
+  <p class="lead">So nobody spends the game waiting on the other.</p>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16" style="gap:18px">
+    ${MH.qrow(['target','Badminton',['Beginner','Intermediate','Advanced'],1,1])}
+    ${MH.qrow(['pulse','Running pace',['Easy · 7+ min/km','Steady · 5–7 min/km','Fast · under 5'],1,0,1])}
+  </div>
+  <div class="banner mt20">${i('info')}<span>Stand-up doesn't need a level.</span></div>`,
+  bar:`<button class="btn btn-primary" data-go="act-when">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 3 · When and where */
+const slot = (t,s,on)=>`<button class="chip" data-toggle aria-pressed="${!!on}">${t}<small>${s}</small></button>`;
+MH.screen({id:'act-when',flow:'activity',title:'When and where',mode:'act',
+  note:'Time slots and distance are filters: you only see people with at least one shared slot, within both people\'s distance. Exact places are agreed later in chat, always a public place for a first meetup.',
+  html:`${MH.step(5,7,'act-level')}
+  <h1>When and where</h1>
+  <p class="lead">We only match you with people free at the same times.</p>
+  <div class="sect-h mt20"><h3>When are you free?</h3><span class="cap">2 picked</span></div>
+  <div class="ac-slots">
+    ${slot('Weekday mornings','6–9 am')}${slot('Weekday evenings','6–9 pm',1)}
+    ${slot('Weekend mornings','6–10 am',1)}${slot('Weekend afternoons','12–5 pm')}
+    ${slot('Weekend evenings','5–9 pm')}${slot('Late nights','After 9 pm')}
+  </div>
+  <div class="mt20"><div class="sect-h"><h3>Near</h3></div>
+    <label class="input">${i('search')}<span class="sr">Search your area</span><input placeholder="Search your area"></label>
+    <div class="chips mt12"><span class="chip on">${i('pin')}HSR Layout</span></div></div>
+  <div class="mt20"><div class="sect-h"><h3>How far will you go?</h3></div>
+    <div class="seg" role="radiogroup" aria-label="How far"><button role="radio" aria-checked="false">2 km</button><button role="radio" aria-checked="true">5 km</button><button role="radio" aria-checked="false">10 km</button></div></div>`,
+  bar:`<button class="btn btn-primary" data-go="act-style">Continue</button>`});
+
+/* 4 · How you like to play */
+MH.screen({id:'act-style',flow:'activity',title:'How you like to play',mode:'act',
+  note:'Scored rows with the same Flexible / Important / Dealbreaker tags as flatmates. "Comfortable meeting" is always a filter, on both sides, because these are in-person meetups.',
+  html:`${MH.step(6,7,'act-when')}
+  <h1>How you like to play</h1>
+  <p class="lead">One tap per row.</p>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16" style="gap:18px">
+    ${MH.qrow(['repeat','How often',['Once a week','2–3 times a week','Most days'],1,0,1])}
+    ${MH.qrow(['flame','Vibe',['Just for fun','A bit competitive','Competitive'],1,1,1])}
+    ${MH.qrow(['calendar','Plans',['Planned ahead','Either','Spontaneous'],0,0])}
+    ${MH.qrow(['people','Group size',['One-on-one','Small group','Either'],0,0])}
+    <div class="q"><div class="ql">${i('shieldCheck')}Comfortable meeting<span class="impl"><span>Always a filter</span></span></div>
+      <div class="seg" role="radiogroup" aria-label="Comfortable meeting"><button role="radio" aria-checked="true">Anyone</button><button role="radio" aria-checked="false">Women only</button><button role="radio" aria-checked="false">Men only</button></div></div>
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="act-payoff">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 5 · Payoff */
+MH.screen({id:'act-payoff',flow:'activity',title:'Your activity style',mode:'act',
+  note:'The end of the activity path: a name for their style, proof there are people nearby at the same times, and how meetups work. No ID ask here; it comes at the first hello, as for flatmates.',
+  html:`${MH.step(7,7,'act-style')}
+  <div class="eyebrow">Your activity style</div>
+  <div class="style-card mt16"><div class="cap">You're</div><h1>The weekend morning player</h1>
+    <div class="chips"><span class="tag">${i('target')}Badminton · Intermediate</span><span class="tag">${i('pulse')}Running · Steady</span><span class="tag">${i('sparkles')}Stand-up</span><span class="tag">${i('clock')}Weekend mornings</span><span class="tag">${i('flame')}A bit competitive</span><span class="tag">${i('calendar')}Planned ahead</span></div></div>
+  <div class="card pad hstack mt12" style="gap:14px;padding:18px"><div class="avs">${av('RM','a4')}${av('PK','a3')}${av('NS','a1')}${av('DV','a2')}</div>
+    <div class="cap" style="color:var(--text);font-size:14px"><b>21 people</b> within 5 km of <b>HSR Layout</b> are free when you are</div></div>
+  <div class="card pad hstack mt12"><div class="tile-ic">${i('shield')}</div><div class="cap" style="color:var(--text);font-size:14px">Say hi, chat, then send a plan for a <b>public place</b>. You can share any plan with a friend.</div></div>`,
+  bar:`<button class="btn btn-primary" data-go="notif-ask">See my matches${i('arrow')}</button>`});
+
+/* 6 · Activity Home */
+MH.screen({id:'act-home',flow:'activity',title:'Home · activity',tab:'home',mode:'act',
+  note:'Activity mode\'s Home: new players, the next plan, your activities, one native ad (sports gear) and recent activity. The first tab reads "Activity" and the 4th is Plans.',
+  html:`${M.head('Good evening, Arjun','HSR Layout · 5 km','act-when')}
+  <div class="hm-hero">
+    <div class="k">Your activity mates</div>
+    <div class="big">5 new players near you</div>
+    <div class="row2"><div class="avs">${av('RM','a4')}${av('PK','a3')}${av('NS','a1')}${av('+2','a2')}</div><button class="btn hm-cream" data-go="act-discover">View matches</button></div>
+    <button class="hm-nudge" data-go="act-plans"><span class="tile-ic" style="background:rgba(248,243,233,.16);color:#F8F3E9">${i('calendar')}</span><span><b>Next: Badminton with Rahul</b>Sat 28 Nov · 7:00 am · HSR Sector 6</span>${i('arrow')}</button>
+  </div>
+  <div class="sect"><div class="sect-h"><h3>Your activities</h3><button class="textbtn" data-go="act-what">Edit</button></div>
+    <div class="hm-grid2">
+      <button class="card hm-tool" data-go="act-discover"><span class="tile-ic">${i('target')}</span><span><b>Badminton</b><span class="cap">Intermediate · 14 players</span></span></button>
+      <button class="card hm-tool" data-go="act-discover"><span class="tile-ic">${i('pulse')}</span><span><b>Running</b><span class="cap">Steady · 9 runners</span></span></button>
+      <button class="card hm-tool" data-go="act-discover"><span class="tile-ic">${i('sparkles')}</span><span><b>Stand-up</b><span class="cap">6 people</span></span></button>
+      <button class="card hm-tool new" data-go="act-what"><span class="tile-ic">${i('plus')}</span><span><b>Add activity</b><span class="cap">Up to 5</span></span></button>
+    </div></div>
+  ${M.ad('target','Racquets, shoes and shuttles','Gear for your weekend game, delivered.','See offers')}
+  <div class="sect"><div class="sect-h"><h3>Recent</h3></div>
+    <div class="card list">
+      <button class="li" data-go="act-chat">${av('RM','a4')}<span class="t"><b>Rahul</b> accepted your plan<span class="cap">Badminton · Sat 7:00 am</span></span><time>1h</time></button>
+      <button class="li" data-go="hellos">${av('PK','a3')}<span class="t"><b>Priya</b> said hi<span class="cap">78% match · running</span></span><time>4h</time></button>
+      <button class="li" data-go="act-plans">${av('NS','a1')}<span class="t"><b>Neha</b>: "That was fun, same time next week?"<span class="cap">Stand-up · Sat 21 Nov</span></span><time>3d</time></button>
+    </div></div>`,
+  mount:M.adBind});
+
+/* 7 · Discover */
+const RLINES = [['briefcase','Data engineer · plays after work'],['target','<strong>Badminton</strong> · Intermediate · <strong>Running</strong> · Easy'],['clock','Free <strong>weekend mornings</strong> · 2.4 km from you']];
+MH.screen({id:'act-discover',flow:'activity',title:'Discover · activity',tab:'discover',mode:'act',
+  note:'The same card as flatmates, with activity bars: shared activities, level, times, vibe and how often. Chips filter by activity. Everyone shown already passes the filters: a shared activity, distance, a shared time slot and who you are comfortable meeting.',
+  html:`<div class="pagehead" style="margin-bottom:4px"><div><h1>Discover</h1><div class="cap">Within 5 km of HSR Layout</div></div>
+    <div class="hstack" style="gap:8px"><button class="iconbtn raised dot-badge" data-go="hellos" aria-label="Hellos, 2 new">${i('wave')}</button><button class="iconbtn raised" data-toast="Filters: distance, times, level and who you're comfortable meeting" aria-label="Filters">${i('filter')}</button></div></div>
+  <div class="chips mt-filt scrollx" role="group" aria-label="Filter by activity">
+    <button class="chip" data-toggle aria-pressed="true">${i('target')}Badminton</button><button class="chip" data-toggle aria-pressed="false">${i('pulse')}Running</button><button class="chip" data-toggle aria-pressed="false">${i('sparkles')}Stand-up</button></div>
+  ${M.card({...R,count:'1 of 14',lines:RLINES,bars:[['Activities',100],['Level',92],['Times',80],['Vibe',85],['How often',64]],both:[['clock','Weekend mornings'],['flame','A bit competitive'],['calendar','Planned ahead']]})}`,
+  bar:M.actions('Passed on Rahul','','Hello sent to Rahul. You\'ll get a chat when he says hi back.'),
+  mount:anim, onShow:anim});
+
+/* 8 · Full profile */
+MH.screen({id:'act-profile',flow:'activity',title:'Full profile · activity',mode:'act',
+  note:'Everything behind the score: shared times, both levels side by side with how much each matters, dealbreakers checked on both sides, other things he\'s into (shown, not scored) and his own questions.',
+  html:`${M.top({...R,lines:RLINES})}
+  <div class="sect"><div class="sect-h"><h3>About</h3></div>
+    <p class="mt-bio">Picked up badminton again last year and I'm hooked. Looking for a regular weekend partner who plays a bit seriously but laughs off a bad game. Happy to split court fees.</p></div>
+  ${M.deal([['Badminton and running','You share 2 activities'],['2.4 km apart','Within both your distances'],['Sat and Sun mornings','Shared times. Rahul\'s dealbreaker.'],['Comfortable meeting anyone','Both of you']])}
+  <div class="sect">${M.cmp(R,[
+    ['Badminton level',92,'Intermediate','Intermediate',1,1],
+    ['Times',80,'Weekday evenings, weekend mornings','Weekend mornings',1,2],
+    ['Vibe',85,'A bit competitive','A bit competitive',1,0],
+    ['Running pace',70,'Steady · 5–7 min/km','Easy · 7+ min/km',0,0],
+    ['Plans',90,'Planned ahead','Planned ahead',0,0],
+    ['Group size',75,'One-on-one','Small group',0,0],
+    ['How often',64,'2–3 times a week','Once a week',0,1]],'Great fit','Same level and weekend mornings. He plays less often than you.')}</div>
+  <div class="sect"><div class="sect-h"><h3>Also into</h3><span class="cap">Shown, not scored</span></div>
+    <div class="chips"><span class="tag plain">Trekking</span><span class="tag plain">Board games</span><span class="tag plain">Kannada</span><span class="tag plain">English</span><span class="tag plain">Hindi</span></div></div>
+  ${M.qs('Rahul',['Singles or doubles?','Where do you usually play in HSR?'])}
+  <div class="sect center"><button class="textbtn" data-go="report">Report or block Rahul</button></div>`,
+  bar:M.actions('Passed on Rahul','','Hello sent to Rahul. You\'ll get a chat when he says hi back.'),
+  mount:anim, onShow:anim});
+
+/* 9 · Chat with a meetup plan */
+const planCard = (status)=>`<div class="card ct-plan" role="group" aria-label="Meetup plan">
+  <div class="ct-plan-h"><span class="tile-ic">${i('target')}</span><div><b>Badminton meetup</b><span class="cap">${status}</span></div></div>
+  <div class="divider" style="margin:12px 0 0"></div>
+  <div class="kv"><span>When</span><span>Sat 28 Nov · 7:00 am</span></div>
+  <div class="kv"><span>Where</span><span>Sports complex, HSR Sector 6</span></div>
+  <div class="btn-row mt8"><button class="btn btn-secondary btn-sm" data-toast="Added to your calendar">${i('calendar')}Add</button><button class="btn btn-secondary btn-sm" data-toast="Choose a friend to share the plan with">${i('share')}Share</button></div></div>`;
+MH.screen({id:'act-chat',flow:'activity',title:'Chat with Rahul',raw:true,mode:'act',
+  note:'The shared chat, tagged Activity. The + button sends a meetup plan; once both accept, it shows in Plans with a reminder. The safety note asks for a public place and offers to share the plan with a friend. No ads in chat.',
+  html:M.thread({n:'Rahul',ini:'RM',tone:'a4',go:'act-profile',sub:'Activity · 82% match'},`
+    <div class="ct-safe">${i('shield')}<span>First meetup? Pick a public place and share the plan with a friend. <button data-go="safety">Safety tips</button></span></div>
+    <div class="ct-day">Yesterday</div>
+    ${M.msg('them','Hey Arjun! Doubles or singles? I usually play singles but I\'m easy.','8:40 pm')}
+    ${M.msg('me','Singles works. I\'m free Saturday morning, there\'s a sports complex in Sector 6.','8:52 pm')}
+    ${M.msg('them','Perfect, I\'ve played there. Send a plan?','8:55 pm')}
+    <div class="ct-day">Today</div>
+    ${planCard('Accepted by both · reminder on Friday')}
+    ${M.msg('them','Booked court 3. Bring shuttles? 😄','9:05 am')}`,
+    `<button class="ac-plus" data-go="act-plan-new" aria-label="Plan a meetup">${i('plus')}</button>`),
+  onShow:ph=>ph.querySelectorAll('details[open]').forEach(d=>d.open=false)});
+
+/* 10 · Plan a meetup */
+MH.screen({id:'act-plan-new',flow:'activity',title:'Plan a meetup',mode:'act',
+  note:'Sent into the chat as a card; both accept it. The place is typed, not picked from listings, and a first meetup should be public. Sharing with a friend sends the time, place and Rahul\'s first name. No ads or partner offers in the middle of this task.',
+  html:`${appbar({back:'act-chat',title:'Plan a meetup'})}
+  <div class="card pad hstack" style="gap:12px">${av('RM','a4','s32')}<span class="cap" style="color:var(--text);font-size:14px">With <b>Rahul</b> · he'll accept or suggest a change</span></div>
+  <div class="gap12 mt20">
+    <div class="field"><span class="flabel">What</span><div class="seg" role="radiogroup" aria-label="Activity"><button role="radio" aria-checked="true">Badminton</button><button role="radio" aria-checked="false">Running</button></div></div>
+    <div class="field"><span class="flabel">Day</span><div class="chips" role="radiogroup" aria-label="Day" style="display:grid;grid-template-columns:1fr 1fr 1fr">
+      <button class="chip on" role="radio" aria-checked="true">Sat 28</button><button class="chip" role="radio" aria-checked="false">Sun 29</button><button class="chip dashed" data-toast="Opens a date picker">${i('calendar')}Other</button></div></div>
+    <div class="field"><span class="flabel">Time</span><button class="input" data-toast="Opens a time picker" style="justify-content:space-between"><span class="strong">7:00 am</span>${i('clock','width:18px;height:18px;color:var(--sub)')}</button></div>
+    <div class="field"><label for="ap-w">Where</label><div class="input">${i('pin')}<input id="ap-w" value="Sports complex, HSR Sector 6"></div>
+      <span class="cap">For a first meetup, pick a public place. Only you two see it.</span></div>
+  </div>
+  <div class="card list mt20">${MH.switchRow({title:'Share this plan with a friend',sub:'They get the time, the place and Rahul\'s first name',on:true})}</div>`,
+  bar:`<button class="btn btn-primary" data-go="act-chat" data-toast="Plan sent to Rahul">${i('send')}Send plan to Rahul</button>`});
+
+/* 11 · Plans (the activity space) */
+MH.screen({id:'act-plans',flow:'activity',title:'Plans',tab:'myhome',mode:'act',
+  note:'Activity mode\'s 4th tab. Plans are made in a chat, then listed here with reminders. After a meetup, a private "How did it go?" helps safety. Need a court? A partner hand-off, like flat hunting: no venue listings in MachaHub. Not an ad slot.',
+  html:`<div class="pagehead"><div><h1>Plans</h1><div class="cap">Made in chat, kept here</div></div></div>
+  <div class="tabs" role="tablist" aria-label="Plans"><button role="tab" aria-selected="true" data-panel="up">Upcoming</button><button role="tab" aria-selected="false" data-panel="past">Past</button></div>
+  <div data-tabpanel="up" class="gap12 mt16">
+    <div class="card ac-plan"><div class="ac-plan-h">${av('RM','a4','s48')}<div class="t"><b>Badminton with Rahul</b><span class="status ok">Both accepted</span></div></div>
+      <div class="divider" style="margin:12px 0 0"></div>
+      <div class="kv"><span>When</span><span>Sat 28 Nov · 7:00 am</span></div><div class="kv"><span>Where</span><span>Sports complex, HSR Sector 6</span></div>
+      <div class="btn-row mt8"><button class="btn btn-secondary btn-sm" data-go="act-chat">${i('chat')}Chat</button><button class="btn btn-secondary btn-sm" data-toast="Shared with Divya on 24 Nov">${i('share')}Shared</button></div></div>
+    <div class="card ac-plan"><div class="ac-plan-h">${av('PK','a3','s48')}<div class="t"><b>Running with Priya</b><span class="ac-wait">Waiting for Priya</span></div></div>
+      <div class="divider" style="margin:12px 0 0"></div>
+      <div class="kv"><span>When</span><span>Sun 29 Nov · 6:30 am</span></div><div class="kv"><span>Where</span><span>Agara Lake, main gate</span></div></div>
+    <div class="card ac-partner"><span class="tile-ic peach">${i('target')}</span><div class="t"><span class="lbl">Partner</span><b>Need a court?</b><span class="cap">Book courts near HSR Layout with [PARTNER].</span></div><button class="textbtn" data-toast="Opens [PARTNER]">Book</button></div>
+  </div>
+  <div data-tabpanel="past" hidden class="gap12 mt16">
+    <div class="card ac-plan"><div class="ac-plan-h">${av('NS','a1','s48')}<div class="t"><b>Stand-up with Neha</b><span class="cap">Sat 21 Nov · Koramangala</span></div></div>
+      <div class="btn-row mt12"><button class="btn btn-secondary btn-sm" data-toast="Thanks. Only our safety team sees this.">How did it go?</button><button class="btn btn-secondary btn-sm" data-toast="Opens your chat with Neha">${i('repeat')}Plan again</button></div></div>
+  </div>
+  <p class="cap center mt16">${i('shield','width:14px;height:14px;vertical-align:-2px')} Meet in public places. Share any plan with a friend.</p>`,
+  onShow(ph){ try{ ph.querySelectorAll('[role=tab]').forEach((t,k)=>t.setAttribute('aria-selected',k===0)); ph.querySelectorAll('[data-tabpanel]').forEach(p=>p.hidden=p.dataset.tabpanel!=='up'); }catch(_){} }});
+})();
+
+</script>
+<script>
+/* M · Co-founder: connection first, not a professional directory. LinkedIn is connected (not a sign-in)
+   and required for the first co-founder hello. After matching, a "build together" trial. */
+(function(){
+const {i,appbar,av} = MH;
+const M = MH.mate;
+
+MH.flow('cofounder','Co-founder','Connection first, not a professional directory. Matching filters on complementary skills, commitment and location, then scores runway, risk, working style, how you decide and why you build. Your idea stays private (only its domain shows) until you both say hi. LinkedIn is connected once, at the first co-founder hello. After matching, a short "build together" trial with weekly check-ins and guided hard conversations.');
+
+MH.css(`
+[data-idea="join"] .only-idea{display:none!important}
+.cf-two{display:grid;gap:18px;margin-top:20px}
+.cf-two h3{margin-bottom:10px}
+.cf-li{display:flex;gap:14px;align-items:flex-start;padding:16px}
+.cf-li .t{flex:1;min-width:0}
+.cf-li b{display:block;font-size:15px}
+.cf-li .tile-ic{background:var(--tint)}
+.cf-goal{padding:18px}
+.cf-goal b{display:block;font:600 17px/1.35 Poppins,sans-serif;margin:8px 0 12px}
+.cf-goal .meter{margin-bottom:8px}
+.cf-hc .li .st{font-size:12px;font-weight:600;color:var(--sub);white-space:nowrap}
+.cf-hc .li .st.ok{color:var(--ink)}
+.cf-hc .li .st.you{color:var(--text)}
+.cf-tq{padding:16px}
+.cf-tq + .cf-tq{border-top:1px solid var(--border)}
+.cf-tq p{margin:0;font:600 15px/1.4 Poppins,sans-serif}
+.cf-days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cf-days .chip{justify-content:center}
+.cf-dl{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.cf-dl li{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45}
+.cf-dl li svg.i{width:20px;height:20px;color:var(--ink);flex-shrink:0;margin-top:1px}
+.cf-dl li.no svg.i{color:var(--sub)}
+`);
+
+const F = {n:'Farah',a:30,ini:'FS',pct:86,go:'cf-profile',back:'cf-discover',alt:'bulb'};
+const FLINES = [['briefcase','Backend engineer · 7 years in payments'],['linkedin','LinkedIn connected · Senior software engineer'],['rocket','Wants to join an idea · <strong>Full-time within 3 months</strong>']];
+
+/* 1 · Do you have an idea? */
+const setIdea = v=>{ document.documentElement.dataset.idea=v; };
+if(!document.documentElement.dataset.idea) setIdea('yes');
+MH.screen({id:'cf-idea',flow:'cofounder',title:'Do you have an idea',mode:'cf',
+  note:'Mirrors "Do you have a place?". Sets what the profile shows. With an idea, only its domain is shown to others; the one-line pitch stays private until both people say hi. "Join one" hides the idea fields.',
+  html:`${MH.step(3,8,'who')}
+  <h1>Do you have an idea?</h1>
+  <p class="lead">This decides what your profile shows.</p>
+  <div class="gap12 mt20" role="radiogroup" aria-label="Do you have an idea">
+    <button class="opt" role="radio" data-idea="yes" aria-checked="true"><div class="tile-ic lg">${i('bulb')}</div><div><b>Yes, I have an idea</b><span class="cap">Find someone to build it with.</span></div><span class="rdot"></span></button>
+    <button class="opt" role="radio" data-idea="join" aria-checked="false"><div class="tile-ic lg">${i('people')}</div><div><b>I want to join one</b><span class="cap">Bring your skills to someone's idea.</span></div><span class="rdot"></span></button>
+    <button class="opt" role="radio" data-idea="either" aria-checked="false"><div class="tile-ic lg">${i('sparkle')}</div><div><b>Open to either</b><span class="cap">Start fresh with the right person.</span></div><span class="rdot"></span></button>
+  </div>
+  <div class="only-idea mt20">
+    <div class="sect-h"><h3>Its domain</h3><span class="cap">Shown on your profile</span></div>
+    <div class="chips" role="radiogroup" aria-label="Domain">${['Fintech','Health','Climate','Education','Consumer','B2B software','AI tools','Other'].map((d,k)=>`<button class="chip ${k===0?'on':''}" role="radio" aria-checked="${k===0}">${d}</button>`).join('')}</div>
+    <div class="field mt16"><label for="cf-p">In one line <span class="cap">(private until you both say hi)</span></label><div class="input"><input id="cf-p" value="Bills and IOUs for shared households"></div></div>
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="cf-skills">Continue</button>`,
+  mount(ph){ ph.querySelectorAll('[data-idea]').forEach(b=>b.addEventListener('click',()=>setIdea(b.dataset.idea))); }});
+
+/* 2 · Skills */
+const sk = (list,on)=>list.map(s=>`<button class="chip tk" data-toggle aria-pressed="${on.includes(s)}">${i('check')}${s}</button>`).join('');
+const SK = ['Product','Tech','Design','Sales & growth','Operations','Domain know-how','Fundraising'];
+MH.screen({id:'cf-skills',flow:'cofounder',title:'What you bring and need',mode:'cf',
+  note:'Complementary skills are a filter: you only see people who bring what you need and need something you bring.',
+  html:`${MH.step(4,8,'cf-idea')}
+  <h1>What you bring, what you need</h1>
+  <p class="lead">Pick what you're strong at, and the gap you want filled.</p>
+  <div class="cf-two">
+    <div><h3>You bring</h3><div class="chips">${sk(SK,['Product','Sales & growth'])}</div></div>
+    <div><h3>You need</h3><div class="chips">${sk(SK,['Tech'])}</div></div>
+  </div>
+  <div class="banner mt20">${i('people')}<span>You'll only see people who bring what you need, and need something you bring.</span></div>`,
+  bar:`<button class="btn btn-primary" data-go="cf-commit">Continue</button>`});
+
+/* 3 · Commitment and runway */
+MH.screen({id:'cf-commit',flow:'cofounder',title:'Commitment and runway',mode:'cf',
+  note:'What each person can put in. Commitment is usually a dealbreaker. Income dependants are asked as a range, never as detail, and shown only as the answer.',
+  html:`${MH.step(5,8,'cf-skills')}
+  <h1>What you can put in</h1>
+  <p class="lead">Time and money, honestly. One tap per row.</p>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16" style="gap:18px">
+    ${MH.qrow(['clock','Commitment',['Full-time now','Full-time within 3 months','Part-time to start'],1,2,1])}
+    ${MH.qrow(['wallet','Runway without a salary',['Under 3 months','3–6 months','6–12 months','12 months or more'],2,1,1])}
+    ${MH.qrow(['flame','Risk appetite',['Play it steady','Balanced','All in'],1,0])}
+    ${MH.qrow(['people','Who depends on your income',['Just me','Partly others','Others depend on me'],0,0,1])}
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="cf-work">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 4 · How you work */
+MH.screen({id:'cf-work',flow:'cofounder',title:'How you work',mode:'cf',
+  note:'Working style and rhythm. Location is a filter when marked Dealbreaker.',
+  html:`${MH.step(6,8,'cf-commit')}
+  <h1>How you work</h1>
+  <p class="lead">Your everyday rhythm as a builder.</p>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16" style="gap:18px">
+    ${MH.qrow(['pin','Where you\'ll work',['Bengaluru, in person','Hybrid in Bengaluru','Remote is fine'],1,2,1])}
+    ${MH.qrow(['moon','Rhythm',['Early starts','Late nights','It varies'],1,0])}
+    ${MH.qrow(['bolt','Pace',['Ship fast, fix later','Get it right first','Depends on the call'],0,1,1])}
+    ${MH.qrow(['chat','How you talk',['Written','Calls','A mix'],2,0])}
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="cf-values">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 5 · Decisions and why you build */
+MH.screen({id:'cf-values',flow:'cofounder',title:'How you decide',mode:'cf',
+  note:'Motivation and values: why you want to build (pick two, scored on overlap), how you decide and how you handle disagreement. The heart of "connection first".',
+  html:`${MH.step(7,8,'cf-work')}
+  <h1>How you decide, and why you build</h1>
+  <p class="lead">The part that keeps founders together.</p>
+  <div class="q mt20"><div class="ql">${i('heart')}Why you want to build<span class="cap" style="margin-left:auto">Pick two</span></div>
+    <div class="chips">${[['A problem I care about',1],['Independence'],['Building wealth',1],['Love of the craft'],['Impact at scale']].map(([t,on])=>`<button class="chip tk" data-toggle aria-pressed="${!!on}">${i('check')}${t}</button>`).join('')}</div></div>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16" style="gap:18px">
+    ${MH.qrow(['scale','How you decide',['Data first','Gut first','Debate it out'],0,1])}
+    ${MH.qrow(['speech','When you disagree',['Talk it out now','Sleep on it, then talk','Write it down first'],0,1,1])}
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="cf-payoff">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 6 · Payoff */
+MH.screen({id:'cf-payoff',flow:'cofounder',title:'Your founder style',mode:'cf',
+  note:'The end of the co-founder path. Shows real matches waiting, says plainly that the idea stays private, and sets the expectation that LinkedIn is connected at the first hello (not now).',
+  html:`${MH.step(8,8,'cf-values')}
+  <div class="eyebrow">Your founder style</div>
+  <div class="style-card mt16"><div class="cap">You're</div><h1>The steady product builder</h1>
+    <div class="chips"><span class="tag">${i('bulb')}Idea · Fintech</span><span class="tag">${i('briefcase')}Brings product, growth</span><span class="tag">${i('target')}Needs tech</span><span class="tag">${i('clock')}Full-time within 3 months</span><span class="tag">${i('pin')}Hybrid in Bengaluru</span><span class="tag">${i('speech')}Talks it out</span></div></div>
+  <div class="card pad hstack mt12" style="gap:14px;padding:18px"><div class="avs">${av('FS','a5')}${av('VR','a2')}${av('MI','a3')}${av('+11','a1')}</div>
+    <div class="cap" style="color:var(--text);font-size:14px"><b>14 builders</b> in Bengaluru bring tech and fit your timeline</div></div>
+  <div class="card pad hstack mt12"><div class="tile-ic">${i('lock')}</div><div class="cap" style="color:var(--text);font-size:14px">Others see <b>Fintech</b> only. Your one-liner stays private until you both say hi.</div></div>
+  <div class="card pad hstack mt12"><div class="tile-ic">${i('linkedin')}</div><div class="cap" style="color:var(--text);font-size:14px">To say hi as a co-founder, you'll connect <b>LinkedIn</b> once. We never post.</div></div>`,
+  bar:`<button class="btn btn-primary" data-go="notif-ask">See my matches${i('arrow')}</button>`});
+
+/* 7 · Co-founder Home */
+MH.screen({id:'cf-home',flow:'cofounder',title:'Home · co-founder',tab:'home',mode:'cf',
+  note:'Co-founder mode\'s Home: new builders, the build trial in progress, one native ad (company registration) and recent activity. The first tab reads "Co-founder" and the 4th is Build.',
+  html:`${M.head('Good evening, Arjun','Bengaluru · hybrid','cf-work')}
+  <div class="hm-hero">
+    <div class="k">Your co-founder search</div>
+    <div class="big">3 new builders this week</div>
+    <div class="row2"><div class="avs">${av('FS','a5')}${av('VR','a2')}${av('MI','a3')}</div><button class="btn hm-cream" data-go="cf-discover">View matches</button></div>
+    <button class="hm-nudge" data-go="profile-edit"><svg viewBox="0 0 36 36" width="36" height="36" aria-hidden="true" style="flex-shrink:0"><circle cx="18" cy="18" r="15" fill="none" stroke="rgba(248,243,233,.22)" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="#D8E875" stroke-width="4" stroke-linecap="round" stroke-dasharray="94.2" stroke-dashoffset="19" transform="rotate(-90 18 18)"/></svg><span><b>Your profile is 80% complete</b>Add something you've built before</span>${i('arrow')}</button>
+  </div>
+  <div class="sect"><div class="sect-h"><h3>Build together</h3><button class="textbtn" data-go="cf-build">With Farah</button></div>
+    <button class="card cf-goal" data-go="cf-build" style="width:100%;text-align:left;border:0;color:var(--text)">
+      <span class="status ok">Week 2 of 4</span>
+      <b>Clickable prototype and 15 household interviews</b>
+      <div class="meter" role="progressbar" aria-label="Trial progress" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"><i style="width:40%"></i></div>
+      <span class="cap">Check-in due Fri · Hard conversations 2 of 5</span>
+    </button></div>
+  ${M.ad('doc','Register your company','Private limited company, start to finish online.','See plans')}
+  <div class="sect"><div class="sect-h"><h3>Recent</h3></div>
+    <div class="card list">
+      <button class="li" data-go="cf-talk">${av('FS','a5')}<span class="t"><b>Farah</b> answered "Roles"<span class="cap">Both of you have answered. See side by side.</span></span><time>2h</time></button>
+      <button class="li" data-go="hellos">${av('VR','a2')}<span class="t"><b>Vikram</b> said hi<span class="cap">79% match · brings design</span></span><time>6h</time></button>
+      <button class="li" data-go="cf-chat">${av('FS','a5')}<span class="t"><b>Farah</b>: "Interview notes are in the doc"<span class="cap">Co-founder chat</span></span><time>1d</time></button>
+    </div></div>`,
+  mount:M.adBind});
+
+/* 8 · Discover */
+MH.screen({id:'cf-discover',flow:'cofounder',title:'Discover · co-founder',tab:'discover',mode:'cf',
+  note:'The same card with co-founder bars: skills fit, commitment, working style, runway and risk, how you decide. "LinkedIn connected" is supporting proof, not the headline. Say hi opens the LinkedIn ask on the first co-founder hello.',
+  html:`<div class="pagehead" style="margin-bottom:4px"><div><h1>Discover</h1><div class="cap">Bengaluru · in person or hybrid</div></div>
+    <div class="hstack" style="gap:8px"><button class="iconbtn raised dot-badge" data-go="hellos" aria-label="Hellos, 1 new">${i('wave')}</button><button class="iconbtn raised" data-toast="Filters: skills, commitment, location and domain" aria-label="Filters">${i('filter')}</button></div></div>
+  <div class="chips mt-filt" role="group" aria-label="Filter by idea">
+    <button class="chip" data-toggle aria-pressed="true">${i('people')}Wants to join</button><button class="chip" data-toggle aria-pressed="false">${i('bulb')}Has an idea</button></div>
+  ${M.card({...F,count:'1 of 14',lines:FLINES,bars:[['Skills',100],['Commitment',90],['Style',88],['Runway',72],['Deciding',64]],both:[['pin','Hybrid in Bengaluru'],['speech','Talk it out now'],['bolt','Ship fast']]})}`,
+  bar:M.actions('Passed on Farah','cf-linkedin'),
+  mount:M.anim, onShow:M.anim});
+
+/* 9 · Full profile */
+MH.screen({id:'cf-profile',flow:'cofounder',title:'Full profile · co-founder',mode:'cf',
+  note:'Connection first: about her and why she builds come before work proof. LinkedIn shows as connected, with the headline and a name check against DigiLocker. Both people\'s answers side by side, dealbreakers on both sides, her own questions.',
+  html:`${M.top({...F,lines:FLINES})}
+  <div class="sect"><div class="sect-h"><h3>About</h3></div>
+    <p class="mt-bio">Seven years building payment systems. I want to work on something people use every month, with a co-founder I can argue with and still have dinner with. Happy to start with a small trial.</p></div>
+  ${M.deal([['Skills fit','She brings tech; she needs product and growth. You bring both.'],['Full-time within 3 months','Both of you'],['Hybrid in Bengaluru','Works for both of you']])}
+  <div class="sect">${M.cmp(F,[
+    ['Pace',88,'Ship fast, fix later','Ship fast, fix later',0,1],
+    ['When you disagree',92,'Talk it out now','Talk it out now',0,1],
+    ['Rhythm',90,'Late nights','It varies',0,0],
+    ['How you talk',85,'A mix','Written',0,0],
+    ['Why you build',75,'A problem I care about, building wealth','A problem I care about, love of the craft',0,0],
+    ['Runway',72,'6–12 months','3–6 months',1,1],
+    ['How you decide',64,'Data first','Debate it out',0,1]],'Great fit','You work and argue the same way. She has less runway than you.')}</div>
+  <div class="sect"><div class="sect-h"><h3>Work proof</h3></div>
+    <div class="card cf-li"><span class="tile-ic">${i('linkedin')}</span><div class="t"><b>LinkedIn connected</b><span class="cap">Senior software engineer at a payments company · name matches her DigiLocker ID</span>
+      <button class="textbtn" style="padding:0" data-toast="Opens Farah's LinkedIn profile">View on LinkedIn</button></div></div></div>
+  <div class="sect"><div class="sect-h"><h3>Interested in</h3><span class="cap">Shown, not scored</span></div>
+    <div class="chips"><span class="tag plain">Fintech</span><span class="tag plain">Climate</span><span class="tag plain">Developer tools</span></div></div>
+  ${M.qs('Farah',['What\'s the smallest version you\'d ship in six weeks?','How do you think about equity between two founders?'])}
+  <div class="sect"><div class="card mt-prompt"><div class="cap">I'll know it's working when…</div><p>We've argued about something and both come out with a better answer.</p></div></div>
+  <div class="sect center"><button class="textbtn" data-go="report">Report or block Farah</button></div>`,
+  bar:M.actions('Passed on Farah','cf-linkedin'),
+  mount:M.anim, onShow:M.anim});
+
+/* 10 · Connect LinkedIn (first co-founder hello) */
+MH.screen({id:'cf-linkedin',flow:'cofounder',title:'Connect LinkedIn',mode:'cf',
+  note:'Asked once, at the first co-founder hello, right after DigiLocker if that is still needed. Connected through LinkedIn\'s own page; it is not a way to sign in to MachaHub. Browsing and building a profile never need it. "Not now" keeps the hello as a draft.',
+  html:`${appbar({back:'cf-discover',title:''})}
+  <div class="center" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+    <div class="hero-ic">${i('linkedin')}</div>
+    <h1 class="mt16">Connect LinkedIn to say hi</h1>
+    <p class="lead" style="margin:0;max-width:310px">Co-founder hellos need one more proof: your work. You connect it once.</p>
+  </div>
+  <div class="card pad mt24"><ul class="cf-dl">
+    <li>${i('eye')}<span><b>We show</b> "LinkedIn connected", your headline and current role.</span></li>
+    <li>${i('shieldCheck')}<span><b>We check</b> that the name matches your DigiLocker ID.</span></li>
+    <li class="no">${i('eyeOff')}<span><b>We never</b> post, read your messages or see your contacts.</span></li>
+  </ul></div>
+  <p class="cap center mt16">You can disconnect anytime in Settings. Your co-founder profile is then hidden.</p>`,
+  bar:`<button class="btn btn-primary" data-go="cf-discover" data-toast="LinkedIn connected. Hello sent to Farah.">${i('linkedin')}Connect LinkedIn</button>
+  <button class="btn btn-ghost" data-go="cf-discover" data-toast="Your hello to Farah is saved as a draft">Not now</button>`});
+
+/* 11 · Chat */
+MH.screen({id:'cf-chat',flow:'cofounder',title:'Chat with Farah',raw:true,mode:'cf',
+  note:'The shared chat, tagged Co-founder. The idea\'s one-liner is shared here by choice. The + button starts a build trial, sent as a card for the other person to accept. No ads in chat.',
+  html:M.thread({n:'Farah',ini:'FS',tone:'a5',go:'cf-profile',sub:'Co-founder · 86% match'},`
+    <div class="ct-safe">${i('shield')}<span>Share your idea when you're ready. Never share ID, bank or OTP details. <button data-go="safety">Safety tips</button></span></div>
+    <div class="ct-day">Thu 12 Nov</div>
+    ${M.msg('me','Here\'s the idea in one line: bills and IOUs for shared households. I\'ve talked to 30 people so far.','7:10 pm')}
+    ${M.msg('them','I\'ve lived that pain. Payments side I can build fast. Try a small trial first?','7:24 pm')}
+    <div class="card ct-plan" role="group" aria-label="Build trial">
+      <div class="ct-plan-h"><span class="tile-ic">${i('rocket')}</span><div><b>Build trial · 4 weeks</b><span class="cap">Sent by you · accepted by Farah</span></div></div>
+      <div class="divider" style="margin:12px 0 0"></div>
+      <div class="kv"><span>Goal</span><span>Prototype + 15 interviews</span></div>
+      <div class="kv"><span>Check-ins</span><span>Fridays</span></div>
+      <button class="btn btn-secondary btn-sm mt8" data-go="cf-build">${i('rocket')}Open in Build</button></div>
+    <div class="ct-day">Yesterday</div>
+    ${M.msg('them','Interview notes are in the doc. Three people asked for UPI reminders.','6:02 pm')}`,
+    `<button class="ac-plus" data-go="cf-build-start" aria-label="Start a build trial">${i('plus')}</button>`),
+  onShow:ph=>ph.querySelectorAll('details[open]').forEach(d=>d.open=false)});
+
+/* 12 · Start a build trial */
+MH.screen({id:'cf-build-start',flow:'cofounder',title:'Start a build trial',mode:'cf',
+  note:'Sent into the chat as a card for the other person to accept. One small shared goal, a length and a check-in day. The hard conversations come with every trial. MachaHub gives no legal or equity advice.',
+  html:`${appbar({back:'cf-chat',title:'Start a build trial'})}
+  <p class="lead" style="margin:0 0 16px">Work on one small thing together before you commit.</p>
+  <div class="gap12">
+    <div class="field"><label for="bt-g">One shared goal</label><div class="input" style="min-height:72px;align-items:flex-start;padding-top:12px"><textarea id="bt-g" rows="2" style="flex:1;border:0;outline:0;background:transparent;font:inherit;color:var(--text);resize:none">Clickable prototype and 15 household interviews</textarea></div></div>
+    <div class="field"><span class="flabel">Length</span><div class="seg" role="radiogroup" aria-label="Length"><button role="radio" aria-checked="false">2 weeks</button><button role="radio" aria-checked="true">4 weeks</button><button role="radio" aria-checked="false">6 weeks</button></div></div>
+    <div class="field"><span class="flabel">Weekly check-in</span><div class="chips cf-days" role="radiogroup" aria-label="Check-in day">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<button class="chip ${d==='Fri'?'on':''}" role="radio" aria-checked="${d==='Fri'}">${d}</button>`).join('')}</div></div>
+  </div>
+  <div class="sect"><div class="sect-h"><h3>Hard conversations included</h3></div>
+    <div class="chips"><span class="tag plain">Roles</span><span class="tag plain">Time and commitment</span><span class="tag plain">Equity</span><span class="tag plain">Money and runway</span><span class="tag plain">If it doesn't work out</span></div>
+    <p class="cap mt8">You each answer privately. Answers show side by side once you both have.</p></div>`,
+  bar:`<button class="btn btn-primary" data-go="cf-chat" data-toast="Trial sent to Farah">${i('send')}Send to Farah</button>`});
+
+/* 13 · Build (the co-founder space) */
+const hc = (t,st,cls,go)=>`<button class="li" ${go?`data-go="${go}"`:`data-toast="Opens the ${t} prompts"`}><span class="t"><b>${t}</b></span><span class="st ${cls}">${st}</span>${i('chev','width:18px;height:18px;color:var(--sub)')}</button>`;
+MH.screen({id:'cf-build',flow:'cofounder',title:'Build',tab:'myhome',mode:'cf',
+  note:'Co-founder mode\'s 4th tab: the build trial. The shared goal, weekly check-ins (answered separately, shown when both have) and five hard conversations. It ends with "Keep building together" or "Part as friends". No ads here; a founder agreement is a partner hand-off, not advice.',
+  html:`<div class="pagehead"><div><h1>Build</h1><div class="cap">With Farah · week 2 of 4</div></div>${av('FS','a5','s48')}</div>
+  <div class="card cf-goal"><span class="status ok">On track</span>
+    <b>Clickable prototype and 15 household interviews</b>
+    <div class="meter" role="progressbar" aria-label="Trial progress" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"><i style="width:40%"></i></div>
+    <span class="cap">Started Mon 16 Nov · ends Sun 13 Dec</span></div>
+  <div class="sect"><div class="sect-h"><h3>This week's check-in</h3><span class="cap">Due Fri 27 Nov</span></div>
+    <div class="card cf-li"><span class="tile-ic">${i('checkCircle')}</span><div class="t"><b>Farah has answered</b><span class="cap">What you did, what's blocked, how it's going. You'll see hers once you answer.</span>
+      <button class="btn btn-primary btn-sm mt12" data-toast="Opens your check-in">Write yours</button></div></div></div>
+  <div class="sect"><div class="sect-h"><h3>Hard conversations</h3><span class="cap">2 of 5</span></div>
+    <div class="card list cf-hc">
+      ${hc('Roles','Both answered','ok','cf-talk')}
+      ${hc('Time and commitment','Both answered','ok','cf-talk')}
+      ${hc('Equity','Your turn','you')}
+      ${hc('Money and runway','Not started','')}
+      ${hc('If it doesn\'t work out','Not started','')}
+    </div></div>
+  <div class="sect"><div class="card pad"><b class="strong">On 13 Dec you'll both choose</b><div class="cap mt8">Keep building together, or part as friends. Neither choice is shown to the other until you've both picked.</div></div></div>
+  <div class="sect"><div class="card ac-partner"><span class="tile-ic peach">${i('doc')}</span><div class="t"><span class="lbl">Partner</span><b>Founder agreement</b><span class="cap">Draft one with a lawyer at [PARTNER]. MachaHub doesn't give legal advice.</span></div><button class="textbtn" data-toast="Opens [PARTNER]">See</button></div></div>`});
+
+/* 14 · A hard conversation, revealed */
+const tq = (q,me,her)=>`<div class="cf-tq"><p>${q}</p><div class="mt-ans"><div><small>You</small>${me}</div><div><small>Farah</small>${her}</div></div></div>`;
+MH.screen({id:'cf-talk',flow:'cofounder',title:'Hard conversation: Roles',mode:'cf',
+  note:'Each person answers the prompts privately; answers are revealed side by side only when both have answered, so neither anchors the other. Where answers differ, the next check-in picks it up.',
+  html:`${appbar({back:'cf-build',title:'Roles'})}
+  <div class="banner">${i('lock')}<span>You both answered on 20 Nov. Answers stay hidden until both of you have answered.</span></div>
+  <div class="card mt16" style="padding:0">
+    ${tq('Who leads product, and who leads tech?','I lead product and customers. You lead tech and engineering hires.','Same. I want a say on scope when it touches the architecture.')}
+    ${tq('Who has the final say on a tie?','Whoever owns the area. If it\'s both, we sleep on it.','The owner of the area. Company-level calls, we talk until we agree.')}
+    ${tq('What would make you step back?','Not being able to pay my rent by month nine.','Going a month without shipping anything.')}
+  </div>
+  <div class="banner mt16">${i('speech')}<span>You mostly agree. You differ on <b>stepping back</b>: worth a chat at Friday's check-in.</span></div>`,
+  bar:`<div class="btn-row"><button class="btn btn-secondary" data-go="cf-chat">${i('chat')}Discuss</button><button class="btn btn-primary" data-go="cf-build" data-toast="Roles marked as agreed">${i('check')}We agree</button></div>`});
 })();
 
 </script>
