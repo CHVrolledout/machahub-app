@@ -304,6 +304,7 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;bac
 html[data-mode="flat"] .phone:not([data-mode]) .nav .mo[data-m="flat"],.phone[data-mode="flat"] .nav .mo[data-m="flat"]{display:flex}
 html[data-mode="act"] .phone:not([data-mode]) .nav .mo[data-m="act"],.phone[data-mode="act"] .nav .mo[data-m="act"]{display:flex}
 html[data-mode="cf"] .phone:not([data-mode]) .nav .mo[data-m="cf"],.phone[data-mode="cf"] .nav .mo[data-m="cf"]{display:flex}
+html[data-mode="tr"] .phone:not([data-mode]) .nav .mo[data-m="tr"],.phone[data-mode="tr"] .nav .mo[data-m="tr"]{display:flex}
 html:not([data-mode]) .phone:not([data-mode]) .nav .mo[data-m="flat"]{display:flex}
 .nav .mt-l{display:inline-flex;align-items:center;gap:1px;white-space:nowrap}
 .nav [data-modetab]{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
@@ -313,6 +314,9 @@ html:not([data-mode]) .phone:not([data-mode]) .nav .mo[data-m="flat"]{display:fl
 .mode-sheet .ms-on{width:24px;height:24px;border-radius:50%;background:var(--teal);color:#F8F3E9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .mode-sheet .ms-on svg.i{width:14px;height:14px;stroke-width:2.6}
 .tile-ic.ghost{background:transparent;border:1px solid var(--border);color:var(--sub)}
+
+/* Tab panels: layout classes like .gap12 set display, which would override the hidden attribute. */
+[data-tabpanel][hidden]{display:none!important}
 
 </style>
 <style>
@@ -523,7 +527,8 @@ const MH = window.MH = {
 const MODES = {
   flat:{name:'Flatmate',long:'Flatmate',icon:'home',home:'home',first:'home-first',discover:'discover',space:'myhome-dash',spaceL:'My Home',spaceI:'key',start:'place',sub:'HSR 2BHK · 6 new matches'},
   act:{name:'Activity',long:'Activity mate',icon:'pulse',home:'act-home',first:'act-home',discover:'act-discover',space:'act-plans',spaceL:'Plans',spaceI:'calendar',start:'act-what',sub:'Badminton, running · 5 new players'},
-  cf:{name:'Co-founder',long:'Co-founder',icon:'bulb',home:'cf-home',first:'cf-home',discover:'cf-discover',space:'cf-build',spaceL:'Build',spaceI:'rocket',start:'cf-idea',sub:'Looking for a tech co-founder · 3 new'}
+  cf:{name:'Co-founder',long:'Co-founder',icon:'bulb',home:'cf-home',first:'cf-home',discover:'cf-discover',space:'cf-build',spaceL:'Build',spaceI:'rocket',start:'cf-idea',sub:'Looking for a tech co-founder · 3 new'},
+  tr:{name:'Travel',long:'Travel mate',icon:'bag',home:'tr-home',first:'tr-home',discover:'tr-discover',space:'tr-trips',spaceL:'Trips',spaceI:'mapFold',start:'tr-trip',sub:'Gokarna · 12–16 Jan · 8 going'}
 };
 MH.MODES = MODES;
 const curMode = el=>{ const ph=el&&el.closest&&el.closest('.phone'); return (ph&&ph.dataset.mode)||document.documentElement.dataset.mode||'flat'; };
@@ -537,7 +542,7 @@ function nav(active){
   const space = Object.entries(MODES).map(([m,o])=>mo(m,`${ic(o.spaceI)}${o.spaceL}`,`${cur('myhome')} data-go="@space"`)).join('');
   return `<nav class="nav" aria-label="Main">${modeTab}<button ${cur('discover')} data-go="@discover">${ic('compass')}Discover</button><button ${cur('chats')} data-go="chats">${ic('chat')}Chats<span class="count-badge" aria-label="2 unread">2</span></button>${space}<button ${cur('profile')} data-go="profile">${ic('user')}Profile</button></nav>`;
 }
-/* The mode sheet: all four modes, Travel still coming soon. Drawn into the current phone. */
+/* The mode sheet: all four modes. Drawn into the current phone. */
 MH.modeSheet = (m='flat',live=true)=>`<div class="scrim" ${live?'data-close-modes':'data-back'}></div>
   <div class="sheet mode-sheet" role="dialog" aria-modal="true" aria-labelledby="ms-t-${live?'l':'s'}">
     <div class="grab"></div>
@@ -545,7 +550,6 @@ MH.modeSheet = (m='flat',live=true)=>`<div class="scrim" ${live?'data-close-mode
     <p class="cap" style="margin:4px 0 14px">Your chats, verification and settings stay the same.</p>
     <div class="card list" role="radiogroup" aria-label="Mate type">
       ${Object.entries(MODES).map(([k,o])=>`<button class="li ms-row" role="radio" aria-checked="${k===m}" data-pick-mode="${k}"><span class="tile-ic sm">${ic(o.icon)}</span><span class="t"><b>${o.long}</b><span class="cap">${o.sub}</span></span>${k===m?`<span class="ms-on">${ic('check')}</span>`:''}</button>`).join('')}
-      <button class="li ms-row" aria-disabled="true" data-toast="Travel mates are coming soon. We'll let you know."><span class="tile-ic sm ghost">${ic('bag')}</span><span class="t"><b>Travel mate</b><span class="cap">Coming soon</span></span></button>
     </div>
     <button class="btn btn-secondary mt16" data-go="my-modes">${ic('gear','width:18px;height:18px')}Manage mate types</button>
   </div>`;
@@ -909,20 +913,20 @@ MH.css(`
 `);
 
 MH.screen({id:'who',flow:'onboarding',title:'Who are you looking for',
-  note:'Flatmate, Activity mate and Co-founder can be picked; Travel is still coming soon. Pick one to start: the rest of onboarding is that mate type\'s own short path. More mate types are added later from Profile, and switched with the first tab.',
+  note:'All four mate types can be picked. Pick one to start: the rest of onboarding is that mate type\'s own short path. More mate types are added later from Profile, and switched with the first tab.',
   html:`${MH.step(2,8,'about')}
   <h1>Who are you looking for?</h1>
   <p class="lead">Pick one to start. You can add more later.</p>
   <div class="cats" role="radiogroup" aria-label="Mate type">
     <button class="cat" role="radio" aria-checked="true" data-cat="flat"><div class="tile-ic">${i('home')}</div><div class="name">Flatmate</div><div class="st">Share a home</div><span class="check">${i('check')}</span></button>
     <button class="cat" role="radio" aria-checked="false" data-cat="cf"><div class="tile-ic">${i('bulb')}</div><div class="name">Co-founder</div><div class="st">Build a company</div><span class="check">${i('check')}</span></button>
-    <button class="cat" aria-disabled="true" data-toast="Travel mates are coming soon"><div class="tile-ic">${i('bag')}</div><div class="name">Travel mate</div><div class="st">Coming soon</div></button>
+    <button class="cat" role="radio" aria-checked="false" data-cat="tr"><div class="tile-ic">${i('bag')}</div><div class="name">Travel mate</div><div class="st">Trips together</div><span class="check">${i('check')}</span></button>
     <button class="cat" role="radio" aria-checked="false" data-cat="act"><div class="tile-ic">${i('pulse')}</div><div class="name">Activity mate</div><div class="st">Sports, fitness, going out</div><span class="check">${i('check')}</span></button>
   </div>`,
   bar:`<button class="btn btn-primary" data-go="@start">Continue</button>`,
   mount(ph){ ph.querySelectorAll('[data-cat]').forEach(b=>b.addEventListener('click',()=>{
     document.documentElement.dataset.mode=b.dataset.cat;
-    const tot={flat:document.documentElement.dataset.place==='no'?7:8,act:7,cf:8}[b.dataset.cat];
+    const tot={flat:document.documentElement.dataset.place==='no'?7:8,act:7,cf:8,tr:7}[b.dataset.cat];
     const n=ph.querySelector('.stepn'), bar=ph.querySelector('.progress');
     if(n) n.textContent=`2 of ${tot}`; if(bar){ bar.setAttribute('aria-label',`Step 2 of ${tot}`); bar.setAttribute('aria-valuemax',tot); bar.firstElementChild.style.width=`${2/tot*100}%`; }
   })); },
@@ -2044,7 +2048,7 @@ const threadHtml = (menu=true)=>`<div class="ct-wrap">${head(menu)}
 </div>`;
 
 /* 1 · Inbox */
-const MTAG={flat:['home','Flatmate'],act:['pulse','Activity'],cf:['bulb','Co-founder']};
+const MTAG={flat:['home','Flatmate'],act:['pulse','Activity'],cf:['bulb','Co-founder'],tr:['bag','Travel']};
 const row = (ini,tone,n,pct,last,t,unread=0,go='chat',m='flat')=>`<button class="ct-row ${unread?'unread':''}" data-go="${go}">
   <span class="ct-avw">${av(ini,tone,'s48')}${vtick}</span>
   <span class="t"><span class="nm">${n}<span class="pc">${pct}%</span><span class="ct-mtag" role="img" aria-label="${MTAG[m][1]} chat" title="${MTAG[m][1]}">${i(MTAG[m][0])}</span></span><span class="msg">${last}</span></span>
@@ -2062,6 +2066,7 @@ MH.screen({id:'chats',flow:'chats',title:'Chats',tab:'chats',
   <div class="card list mt16" style="padding:0">
     ${row('AR','a1','Ananya',87,'Sunday 11 works. See you then!','10:42',2)}
     ${row('RM','a4','Rahul',82,'Accepted: Badminton, Sat 7:00 am','9:05',0,'act-chat','act')}
+    ${row('SR','a3','Sana',84,'Joined! I added sunscreen to the…','10:02',0,'tr-chat','tr')}
     ${row('FS','a5','Farah',86,'Sent you a build trial','Yesterday',0,'cf-chat','cf')}
     ${row('KS','a3','Kavya',91,'Haha same. Do you mind a cat?','Yesterday')}
     ${row('RK','a4','Rohan',81,'You: Let\'s talk this weekend then','Mon')}
@@ -3080,7 +3085,7 @@ MH.screen({id:'profile',flow:'profile',title:'Profile',tab:'profile',
     </div>
   </div>
   <div class="card list mt12">
-    ${row({icon:'people',title:'Your mate types',sub:'Flatmate, Activity mate, Co-founder',go:'my-modes'})}
+    ${row({icon:'people',title:'Your mate types',sub:'Flatmate, Activity, Co-founder, Travel',go:'my-modes'})}
     ${row({icon:'edit',title:'Edit profile',sub:'Photos, bio, how you live',go:'profile-edit'})}
     ${row({icon:'speech',title:'Your questions',sub:'2 questions · answered before anyone says hi',go:'my-questions'})}
     ${row({icon:'sliders',title:'Search preferences',sub:'HSR Layout, Koramangala · from 1 Dec',go:'filters'})}
@@ -3565,7 +3570,7 @@ if(fh){
 }
 
 MH.screen({id:'mode-switch',flow:'modes',title:'Switch mate type',tab:'home',mode:'flat',
-  note:'Hold the first tab, or tap it again while you are on it. All four mate types are listed; Travel is still coming soon. Picking one switches the whole app: Home, Discover and the 4th tab. Try it in "Use like an app".',
+  note:'Hold the first tab, or tap it again while you are on it. All four mate types are listed. Picking one switches the whole app: Home, Discover and the 4th tab. Try it in "Use like an app".',
   html:(MH.byId.home?MH.byId.home.html:'').replace(/ id="[^"]*"/g,''),
   overlay:MH.modeSheet('flat',false)});
 
@@ -3584,11 +3589,8 @@ MH.screen({id:'my-modes',flow:'modes',title:'Your mate types',
     ${mcard('flat','Showing in Discover',['Has a place · HSR Layout','₹14,500 share'],'place')}
     ${mcard('act','Showing in Discover',['Badminton · Intermediate','Running · Steady','Stand-up'],'act-what')}
     ${mcard('cf','Showing in Discover',['Has an idea · Fintech','Brings product, growth'],'cf-idea',`<div class="banner mt12" style="padding:10px 12px">${i('linkedin')}<span>LinkedIn connected. Needed to say hi as a co-founder.</span></div>`)}
-  </div>
-  <div class="sect"><div class="sect-h"><h3>Coming soon</h3></div>
-    <div class="card list">
-      <div class="li" style="cursor:default"><span class="tile-ic sm ghost">${i('bag')}</span><span class="t"><b>Travel mate</b><span class="cap">Tell me when it opens</span></span><button class="switch" role="switch" aria-checked="true" aria-label="Tell me when Travel mate opens"></button></div>
-    </div></div>`});
+    ${mcard('tr','Showing in Discover',['Gokarna · 12–16 Jan','Comfortable · homestays'],'tr-trip',`<div class="banner mt12" style="padding:10px 12px">${i('shield')}<span>Trip shared with Divya. Check-ins on 12 and 16 Jan.</span></div>`)}
+  </div>`});
 })();
 
 </script>
@@ -4188,6 +4190,287 @@ MH.screen({id:'cf-talk',flow:'cofounder',title:'Hard conversation: Roles',mode:'
   </div>
   <div class="banner mt16">${i('speech')}<span>You mostly agree. You differ on <b>stepping back</b>: worth a chat at Friday's check-in.</span></div>`,
   bar:`<div class="btn-row"><button class="btn btn-secondary" data-go="cf-chat">${i('chat')}Discuss</button><button class="btn btn-primary" data-go="cf-build" data-toast="Roles marked as agreed">${i('check')}We agree</button></div>`});
+})();
+
+</script>
+<script>
+/* N · Travel mate: trip first. People match on a trip (where, when, budget); travel style scores it.
+   Trips hold up to 4 matched mates, a day-by-day plan, a shared packing list and Split for costs. */
+(function(){
+const {i,appbar,av} = MH;
+const M = MH.mate;
+
+MH.flow('travel','Travel mate','Trip first: you add a trip (where, when, budget) and match with verified people going to the same place at the same time. Matching filters on destination, overlapping dates and budget band, then scores stay, pace, mornings, planning, splitting costs, food, drinks and smoking. A trip holds up to 4 matched mates. Trips has the plan, a shared packing list and Split. Share any trip with a trusted contact, with check-ins. No hotel or bus listings: booking goes to a partner.');
+
+MH.css(`
+.tr-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tr-dates .input{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:6px 14px;color:var(--sub);font-size:12px;text-align:left}
+.tr-dates .input b{font-size:15px;color:var(--text)}
+.tr-trip{padding:16px}
+.tr-trip-h{display:flex;gap:12px;align-items:center}
+.tr-trip-h .t{flex:1;min-width:0}
+.tr-trip-h b{display:block;font:600 17px Poppins,sans-serif}
+.tr-who{display:flex;align-items:center;gap:10px;margin-top:12px}
+.tr-who .avs{flex-shrink:0}
+.tr-who .cap{flex:1;min-width:0}
+.tr-slot{width:32px;height:32px;border-radius:50%;border:1.5px dashed var(--border);color:var(--sub);display:inline-flex;align-items:center;justify-content:center;margin-left:-6px;background:var(--card)}
+.tr-slot svg.i{width:14px;height:14px}
+.tr-day{display:flex;gap:14px;padding:14px 16px}
+.tr-day + .tr-day{border-top:1px solid var(--border)}
+.tr-day .d{width:44px;flex-shrink:0;text-align:center;font-size:12px;font-weight:600;color:var(--sub);line-height:1.2}
+.tr-day .d b{display:block;font:600 20px Poppins,sans-serif;color:var(--text)}
+.tr-day .t{flex:1;min-width:0;font-size:14px;line-height:1.45}
+.tr-day .t b{display:block;font-size:15px}
+.tr-cost{display:flex;gap:12px;align-items:center;padding:16px}
+.tr-cost .t{flex:1;min-width:0}
+.tr-cost b{display:block;font:600 20px Poppins,sans-serif}
+.tr-pick{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;min-height:68px;border:0;background:transparent;text-align:left;color:var(--text)}
+.tr-pick + .tr-pick{border-top:1px solid var(--border)}
+.tr-pick .t{flex:1;min-width:0;font-size:14px;line-height:1.4}
+.tr-pick .t b{display:block;font-weight:600}
+.tr-pick .cbox{width:26px;height:26px;border-radius:8px}
+.tr-pick[aria-disabled="true"]{opacity:.55}
+.tr-sees{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.tr-sees li{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45}
+.tr-sees li svg.i{width:20px;height:20px;color:var(--ink);flex-shrink:0;margin-top:1px}
+.tr-sees li.no svg.i{color:var(--sub)}
+`);
+
+const S = {n:'Sana',a:27,ini:'SR',pct:84,go:'tr-profile',back:'tr-discover',alt:'globe'};
+const SLINES = [['briefcase','UX researcher · travels every few months'],['pin','<strong>Gokarna</strong> · 12–15 Jan · from Bengaluru'],['wallet','<strong>Comfortable</strong> · ₹8–20k · hostels']];
+const PACK = [['Sunscreen and first-aid kit','You',1,'AK','a1'],['Power bank and charger','Sana',1,'SR','a3'],['Snorkel masks (2)','Sana',0,'SR','a3'],['Snacks for the bus','You',0,'AK','a1']];
+
+/* 1 · Your trip */
+MH.screen({id:'tr-trip',flow:'travel',title:'Your trip',mode:'tr',
+  note:'Trip first: the destination and dates are the hard filter, so you only see people going to the same place at an overlapping time. Flexible days widen the overlap. You can add more trips later in Trips.',
+  html:`${MH.step(3,7,'who')}
+  <h1>Where are you going?</h1>
+  <p class="lead">We'll match you with people going at the same time.</p>
+  <div class="gap12 mt20" style="gap:18px">
+    <div class="field"><label for="tr-to">Destination</label><div class="input">${i('pin')}<input id="tr-to" value="Gokarna, Karnataka"></div></div>
+    <div class="field"><span class="flabel">Dates</span><div class="tr-dates">
+      <button class="input" data-toast="Opens a date picker"><span>From</span><b>Mon 12 Jan</b></button>
+      <button class="input" data-toast="Opens a date picker"><span>To</span><b>Fri 16 Jan</b></button></div></div>
+    <div class="field"><span class="flabel">How flexible are your dates?</span><div class="seg" role="radiogroup" aria-label="Flexible dates"><button role="radio" aria-checked="false">Fixed</button><button role="radio" aria-checked="true">± 1 day</button><button role="radio" aria-checked="false">± 3 days</button></div></div>
+    <div class="field"><label for="tr-from">Starting from</label><div class="input">${i('compass')}<input id="tr-from" value="Bengaluru"></div><span class="cap">So you can travel there together.</span></div>
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="tr-budget">Continue</button>`});
+
+/* 2 · Budget and stay */
+MH.screen({id:'tr-budget',flow:'travel',title:'Budget and stay',mode:'tr',
+  note:'Budget band is a filter (within one step of yours). Stay type is scored, with the usual Flexible / Important / Dealbreaker tag. Amounts are per person for the whole trip, travel included.',
+  html:`${MH.step(4,7,'tr-trip')}
+  <h1>Budget and stay</h1>
+  <p class="lead">Per person, for the whole trip, travel included.</p>
+  <div class="gap12 mt20" role="radiogroup" aria-label="Budget">
+    <button class="opt" role="radio" aria-checked="false"><div class="tile-ic lg">${i('wallet')}</div><div><b>Backpacker</b><span class="cap">Under ₹8,000 · hostels, buses, street food</span></div><span class="rdot"></span></button>
+    <button class="opt" role="radio" aria-checked="true"><div class="tile-ic lg">${i('rupee')}</div><div><b>Comfortable</b><span class="cap">₹8,000–20,000 · homestays, sleeper buses or trains</span></div><span class="rdot"></span></button>
+    <button class="opt" role="radio" aria-checked="false"><div class="tile-ic lg">${i('star')}</div><div><b>Premium</b><span class="cap">Over ₹20,000 · hotels, flights, cabs</span></div><span class="rdot"></span></button>
+  </div>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16">${MH.qrow(['bag','Where you stay',['Hostel','Homestay','Hotel'],1,0])}</div>`,
+  bar:`<button class="btn btn-primary" data-go="tr-style">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 3 · How you travel */
+MH.screen({id:'tr-style',flow:'travel',title:'How you travel',mode:'tr',
+  note:'The rows that decide whether a trip feels easy together. Each is scored and tagged Flexible / Important / Dealbreaker (tap the tag to cycle). Splitting costs matters because Trips uses Split.',
+  html:`${MH.step(5,7,'tr-budget')}
+  <h1>How you travel</h1>
+  <p class="lead">One tap per row.</p>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16" style="gap:18px">
+    ${MH.qrow(['bolt','Pace',['Packed','Balanced','Slow'],2,1])}
+    ${MH.qrow(['sun','Mornings',['Early start','Either','Late start'],2,0])}
+    ${MH.qrow(['mapFold','Planning',['Planned','Rough plan','Wing it'],1,0])}
+    ${MH.qrow(['split','Costs',['Split everything','Each pays own','Either'],0,1,1])}
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="tr-habits">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 4 · Food, drinks and smoking */
+MH.screen({id:'tr-habits',flow:'travel',title:'Food, drinks and smoking',mode:'tr',
+  note:'Asked the same way as flatmates, phrased as what you are comfortable with on the trip. Each scored and tagged; a Dealbreaker filters on both sides.',
+  html:`${MH.step(6,7,'tr-style')}
+  <h1>On the trip</h1>
+  <p class="lead">What you're comfortable with.</p>
+  ${MH.impLegend||''}
+  <div class="gap12 mt16" style="gap:18px">
+    ${MH.qrow(['leaf','Food',['Veg only','Eggs okay','Anything'],2,0])}
+    ${MH.qrow(['glass','Drinking',['I prefer no alcohol','Now and then is fine','Drinking is fine'],1,0,1])}
+    ${MH.qrow(['noSmoke','Smoking',['I prefer smoke-free','Occasional is okay','Smoking is okay'],0,1,1])}
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="tr-payoff">Continue</button>`,
+  mount:MH.impCycle});
+
+/* 5 · Payoff */
+MH.screen({id:'tr-payoff',flow:'travel',title:'Your travel style',mode:'tr',
+  note:'The end of the travel path: a name for their style, proof there are people going to the same place at the same time, and how trips and safety work. No ID ask here; it comes at the first hello.',
+  html:`${MH.step(7,7,'tr-habits')}
+  <div class="eyebrow">Your travel style</div>
+  <div class="style-card mt16"><div class="cap">You're</div><h1>The slow-morning explorer</h1>
+    <div class="chips"><span class="tag">${i('pin')}Gokarna · 12–16 Jan</span><span class="tag">${i('rupee')}Comfortable</span><span class="tag">${i('bag')}Homestays</span><span class="tag">${i('bolt')}Slow pace</span><span class="tag">${i('sun')}Late starts</span><span class="tag">${i('split')}Split everything</span></div></div>
+  <div class="card pad hstack mt12" style="gap:14px;padding:18px"><div class="avs">${av('SR','a3')}${av('VK','a4')}${av('MJ','a2')}</div>
+    <div class="cap" style="color:var(--text);font-size:14px"><b>8 people</b> are going to <b>Gokarna</b> on dates that overlap yours</div></div>
+  <div class="card pad hstack mt12"><div class="tile-ic">${i('shield')}</div><div class="cap" style="color:var(--text);font-size:14px">Everyone is ID-verified before they can say hi. A trip holds up to <b>4 people</b>, and you can share it with someone you trust.</div></div>`,
+  bar:`<button class="btn btn-primary" data-go="notif-ask">See who's going${i('arrow')}</button>`});
+
+/* 6 · Travel Home */
+MH.screen({id:'tr-home',flow:'travel',title:'Home · travel',tab:'home',mode:'tr',
+  note:'Travel mode\'s Home: people going on your dates, your next trip, your trips, one native ad (luggage) and recent activity. The first tab reads "Travel" and the 4th is Trips.',
+  html:`${M.head('Good evening, Arjun','From Bengaluru','tr-trip')}
+  <div class="hm-hero">
+    <div class="k">Gokarna · 12–16 Jan</div>
+    <div class="big">8 people on your dates</div>
+    <div class="row2"><div class="avs">${av('SR','a3')}${av('VK','a4')}${av('MJ','a2')}${av('+5','a1')}</div><button class="btn hm-cream" data-go="tr-discover">View matches</button></div>
+    <button class="hm-nudge" data-go="tr-trip-detail"><span class="tile-ic" style="background:rgba(248,243,233,.16);color:#F8F3E9">${i('mapFold')}</span><span><b>Your trip with Sana</b>2 of 4 going · packing list 2 of 4</span>${i('arrow')}</button>
+  </div>
+  <div class="sect"><div class="sect-h"><h3>Your trips</h3><button class="textbtn" data-go="tr-trips">See all</button></div>
+    <div class="hm-grid2">
+      <button class="card hm-tool" data-go="tr-trip-detail"><span class="tile-ic">${i('pin')}</span><span><b>Gokarna</b><span class="cap">12–16 Jan · 2 going</span></span></button>
+      <button class="card hm-tool new" data-go="tr-trip"><span class="tile-ic">${i('plus')}</span><span><b>Add a trip</b><span class="cap">Find mates for it</span></span></button>
+    </div></div>
+  ${M.ad('bag','Cabin bags that fit everything','Light luggage for long weekends.','See offers')}
+  <div class="sect"><div class="sect-h"><h3>Recent</h3></div>
+    <div class="card list">
+      <button class="li" data-go="tr-chat">${av('SR','a3')}<span class="t"><b>Sana</b> joined your Gokarna trip<span class="cap">2 of 4 going</span></span><time>2h</time></button>
+      <button class="li" data-go="hellos">${av('VK','a4')}<span class="t"><b>Vikram</b> said hi<span class="cap">79% match · Gokarna 13–16 Jan</span></span><time>5h</time></button>
+      <button class="li" data-go="tr-share">${i('shield')}<span class="t">Trip shared with <b>Divya</b><span class="cap">She'll get check-ins on 12 and 16 Jan</span></span><time>1d</time></button>
+    </div></div>`,
+  mount:M.adBind});
+
+/* 7 · Discover */
+MH.screen({id:'tr-discover',flow:'travel',title:'Discover · travel',tab:'discover',mode:'tr',
+  note:'The same card, with travel bars: dates overlap, budget, pace, mornings and stay. Chips switch between your trips. Everyone shown already passes the filters: same destination, at least 2 overlapping days and a budget within one step.',
+  html:`<div class="pagehead" style="margin-bottom:4px"><div><h1>Discover</h1><div class="cap">Going to Gokarna when you are</div></div>
+    <div class="hstack" style="gap:8px"><button class="iconbtn raised dot-badge" data-go="hellos" aria-label="Hellos, 1 new">${i('wave')}</button><button class="iconbtn raised" data-toast="Filters: dates, budget, stay and starting city" aria-label="Filters">${i('filter')}</button></div></div>
+  <div class="chips mt-filt scrollx" role="radiogroup" aria-label="Your trips">
+    <button class="chip on" role="radio" aria-checked="true">${i('pin')}Gokarna · 12–16 Jan</button><button class="chip dashed" data-go="tr-trip">${i('plus')}Add a trip</button></div>
+  ${M.card({...S,count:'1 of 8',lines:SLINES,bars:[['Dates',90],['Budget',100],['Pace',88],['Mornings',85],['Stay',64]],both:[['calendar','4 days together'],['sun','Late starts'],['split','Split everything']]})}`,
+  bar:M.actions('Passed on Sana','','Hello sent to Sana. You\'ll get a chat when she says hi back.'),
+  mount:M.anim, onShow:M.anim});
+
+/* 8 · Full profile */
+MH.screen({id:'tr-profile',flow:'travel',title:'Full profile · travel',mode:'tr',
+  note:'Everything behind the score: the trip overlap, both answers side by side with how much each matters, dealbreakers checked on both sides, places she\'s been (shown, not scored) and her own questions.',
+  html:`${M.top({...S,lines:SLINES})}
+  <div class="sect"><div class="sect-h"><h3>About</h3></div>
+    <p class="mt-bio">Beaches, long breakfasts and one good trek a trip. I like a loose plan and an early night now and then. Happy to split everything down the middle.</p></div>
+  ${M.deal([['Gokarna','Same destination'],['12–15 Jan','4 days together. Your dates are ± 1 day.'],['Comfortable budget','Same band, ₹8–20k']])}
+  <div class="sect">${M.cmp(S,[
+    ['Pace',88,'Slow','Balanced',1,0],
+    ['Mornings',85,'Late start','Late start',0,0],
+    ['Costs',100,'Split everything','Split everything',1,1],
+    ['Planning',90,'Rough plan','Rough plan',0,0],
+    ['Smoking',100,'I prefer smoke-free','I prefer smoke-free',1,2],
+    ['Drinking',80,'Now and then is fine','I prefer no alcohol',0,0],
+    ['Stay',64,'Homestay','Hostel',0,1]],'Great fit','Same dates and budget. She\'d rather stay in hostels.')}</div>
+  <div class="sect"><div class="sect-h"><h3>Been to</h3><span class="cap">Shown, not scored</span></div>
+    <div class="chips"><span class="tag plain">Hampi</span><span class="tag plain">Coorg</span><span class="tag plain">Pondicherry</span><span class="tag plain">Kannada</span><span class="tag plain">English</span></div></div>
+  ${M.qs('Sana',['Bus or train to Gokarna?','One thing you won\'t skip on this trip?'])}
+  <div class="sect center"><button class="textbtn" data-go="report">Report or block Sana</button></div>`,
+  bar:M.actions('Passed on Sana','','Hello sent to Sana. You\'ll get a chat when she says hi back.'),
+  mount:M.anim, onShow:M.anim});
+
+/* 9 · Chat with a trip invite */
+const inviteCard = `<div class="card ct-plan" role="group" aria-label="Trip invite">
+  <div class="ct-plan-h"><span class="tile-ic">${i('mapFold')}</span><div><b>Gokarna trip</b><span class="cap">Sana joined · 2 of 4 going</span></div></div>
+  <div class="divider" style="margin:12px 0 0"></div>
+  <div class="kv"><span>When</span><span>12–16 Jan</span></div>
+  <div class="kv"><span>From</span><span>Bengaluru</span></div>
+  <div class="btn-row mt8"><button class="btn btn-secondary btn-sm" data-go="tr-trip-detail">${i('mapFold')}Open trip</button><button class="btn btn-secondary btn-sm" data-go="tr-share">${i('shield')}Share</button></div></div>`;
+MH.screen({id:'tr-chat',flow:'travel',title:'Chat with Sana',raw:true,mode:'tr',
+  note:'The shared chat, tagged Travel. The + button invites her to your trip; once she joins, the trip shows in Trips for both. The safety note offers to share the trip with a trusted contact. No ads in chat.',
+  html:M.thread({n:'Sana',ini:'SR',tone:'a3',go:'tr-profile',sub:'Travel · 84% match'},`
+    <div class="ct-safe">${i('shield')}<span>Before you go, share the trip with someone you trust. They get check-ins on the days you leave and return. <button data-go="tr-share">Share trip</button></span></div>
+    <div class="ct-day">Yesterday</div>
+    ${M.msg('them','Hi! Bus or train? I was looking at the overnight sleeper on the 11th.','7:10 pm')}
+    ${M.msg('me','Sleeper works. I\'m leaving on the 16th, you?','7:24 pm')}
+    ${M.msg('them','15th, but happy to plan the first four days together 🙂','7:26 pm')}
+    <div class="ct-day">Today</div>
+    ${inviteCard}
+    ${M.msg('them','Joined! I added sunscreen to the packing list 😄','10:02 am')}`,
+    `<button class="ac-plus" data-go="tr-invite" aria-label="Invite to a trip">${i('plus')}</button>`),
+  onShow:ph=>ph.querySelectorAll('details[open]').forEach(d=>d.open=false)});
+
+/* 10 · Trips (the travel space) */
+MH.screen({id:'tr-trips',flow:'travel',title:'Trips',tab:'myhome',mode:'tr',
+  note:'Travel mode\'s 4th tab. Each trip lists who\'s going, its plan, packing list and costs. Need a stay or a bus? A partner hand-off, like flat hunting: no listings in MachaHub. Not an ad slot.',
+  html:`<div class="pagehead"><div><h1>Trips</h1><div class="cap">Up to 4 mates per trip</div></div><button class="iconbtn raised" data-go="tr-trip" aria-label="Add a trip">${i('plus')}</button></div>
+  <div class="tabs" role="tablist" aria-label="Trips"><button role="tab" aria-selected="true" data-panel="tr-up">Upcoming</button><button role="tab" aria-selected="false" data-panel="tr-past">Past</button></div>
+  <div data-tabpanel="tr-up" class="gap12 mt16">
+    <button class="card tr-trip" data-go="tr-trip-detail" style="width:100%;text-align:left;border:0;color:var(--text)"><div class="tr-trip-h"><span class="tile-ic">${i('pin')}</span><div class="t"><b>Gokarna</b><span class="cap">Mon 12 – Fri 16 Jan · from Bengaluru</span></div>${i('chev')}</div>
+      <div class="tr-who"><div class="avs">${av('AK','a1','s32')}${av('SR','a3','s32')}<span class="tr-slot">${i('plus')}</span><span class="tr-slot">${i('plus')}</span></div><span class="cap">You and Sana · 2 places left</span></div>
+      <div class="divider" style="margin:12px 0 0"></div>
+      <div class="kv"><span>Packing</span><span>2 of 4 packed</span></div><div class="kv"><span>Costs</span><span>You owe ₹1,150</span></div>
+      <div class="kv"><span>Shared with</span><span>Divya</span></div></button>
+    <div class="card ac-partner"><span class="tile-ic peach">${i('bag')}</span><div class="t"><span class="lbl">Partner</span><b>Need a stay or a bus?</b><span class="cap">Book for Gokarna, 12–16 Jan, with [PARTNER].</span></div><button class="textbtn" data-toast="Opens [PARTNER]">Book</button></div>
+  </div>
+  <div data-tabpanel="tr-past" hidden class="gap12 mt16">
+    <div class="card tr-trip"><div class="tr-trip-h"><span class="tile-ic">${i('pin')}</span><div class="t"><b>Coorg</b><span class="cap">Oct 2026 · with Meera</span></div></div>
+      <div class="btn-row mt12"><button class="btn btn-secondary btn-sm" data-toast="Thanks. Only our safety team sees this.">How did it go?</button><button class="btn btn-secondary btn-sm" data-toast="All settled up">${i('split')}Settled</button></div></div>
+  </div>
+  <p class="cap center mt16">${i('shield','width:14px;height:14px;vertical-align:-2px')} Share any trip with someone you trust.</p>`,
+  onShow(ph){ try{ ph.querySelectorAll('[role=tab]').forEach((t,k)=>t.setAttribute('aria-selected',k===0)); ph.querySelectorAll('[data-tabpanel]').forEach(p=>p.hidden=p.dataset.tabpanel!=='tr-up'); }catch(_){} }});
+
+/* 11 · One trip: plan, packing, costs */
+MH.screen({id:'tr-trip-detail',flow:'travel',title:'Gokarna trip',mode:'tr',
+  note:'One trip. Who\'s going (up to 4, invite more matched mates), then three tabs: a simple day-by-day plan, a shared packing list (tick what\'s packed; tap to try) and costs, which use the same Split as My Home. MachaHub never moves money. No ads here.',
+  html:`${appbar({back:'tr-trips',title:'Gokarna',right:`<button class="iconbtn" data-go="tr-share" aria-label="Share trip with a contact">${i('shield')}</button>`})}
+  <div class="card tr-trip"><div class="tr-trip-h"><div class="t"><b>Mon 12 – Fri 16 Jan</b><span class="cap">Overnight sleeper from Bengaluru</span></div></div>
+    <div class="tr-who"><div class="avs">${av('AK','a1','s32')}${av('SR','a3','s32')}<span class="tr-slot">${i('plus')}</span><span class="tr-slot">${i('plus')}</span></div><span class="cap">You and Sana</span><button class="btn btn-secondary btn-sm" data-go="tr-invite">Invite</button></div></div>
+  <div class="tabs mt16" role="tablist" aria-label="Trip"><button role="tab" aria-selected="true" data-panel="td-plan">Plan</button><button role="tab" aria-selected="false" data-panel="td-pack">Packing</button><button role="tab" aria-selected="false" data-panel="td-cost">Costs</button></div>
+  <div data-tabpanel="td-plan" class="mt16">
+    <div class="card" style="padding:4px 0">
+      <div class="tr-day"><div class="d">Mon<b>12</b></div><div class="t"><b>Arrive, Kudle beach</b>Check in, slow lunch, sunset.</div></div>
+      <div class="tr-day"><div class="d">Tue<b>13</b></div><div class="t"><b>Beach trek</b>Kudle to Paradise beach. Start after breakfast.</div></div>
+      <div class="tr-day"><div class="d">Wed<b>14</b></div><div class="t"><b>Free day</b>Nothing planned on purpose.</div></div>
+      <div class="tr-day"><div class="d">Thu<b>15</b></div><div class="t"><b>Mirjan fort</b>Sana leaves in the evening.</div></div>
+      <div class="tr-day"><div class="d">Fri<b>16</b></div><div class="t"><b>Head home</b>Overnight sleeper back to Bengaluru.</div></div>
+    </div>
+    <button class="btn btn-secondary mt12" data-toast="Add a day or a note to the plan">${i('plus')}Add to plan</button></div>
+  <div data-tabpanel="td-pack" hidden class="mt16">
+    <div class="card list">${PACK.map(([t,w,on,ini,tone])=>`<button class="mn-chore" role="checkbox" aria-checked="${!!on}"><span class="cbox">${i('check')}</span><span class="t"><b>${t}</b><span class="cap">${w}</span></span>${av(ini,tone,'s32')}</button>`).join('')}</div>
+    <button class="btn btn-secondary mt12" data-toast="Add an item and who brings it">${i('plus')}Add item</button></div>
+  <div data-tabpanel="td-cost" hidden class="mt16">
+    <div class="card tr-cost"><span class="tile-ic">${i('split')}</span><div class="t"><span class="cap">You owe Sana</span><b>₹1,150</b></div><button class="btn btn-secondary btn-sm" data-toast="Opens Settle up, the same as My Home">Settle</button></div>
+    <div class="card list mt12">
+      <div class="li" style="cursor:default">${i('receipt')}<span class="t"><b>Sleeper bus tickets</b><span class="cap">Sana paid · split equally</span></span><span class="strong">₹2,300</span></div>
+      <div class="li" style="cursor:default">${i('bag')}<span class="t"><b>Homestay deposit</b><span class="cap">You paid · split equally</span></span><span class="strong">₹2,000</span></div>
+    </div>
+    <button class="btn btn-secondary mt12" data-toast="Opens Add expense, the same as My Home">${i('plus')}Add expense</button>
+    <p class="cap mt12">Uses Split, like My Home. MachaHub never moves money.</p></div>`,
+  onShow(ph){ try{ ph.querySelectorAll('[role=tab]').forEach((t,k)=>t.setAttribute('aria-selected',k===0)); ph.querySelectorAll('[data-tabpanel]').forEach(p=>p.hidden=p.dataset.tabpanel!=='td-plan'); }catch(_){} }});
+
+/* 12 · Invite to the trip */
+MH.screen({id:'tr-invite',flow:'travel',title:'Invite to your trip',mode:'tr',
+  note:'Only people you have matched with in travel mode, going on overlapping dates, can be invited. Up to 4 on a trip in all. Each person accepts in chat; there are no open join requests.',
+  html:`${appbar({back:'tr-trip-detail',title:'Invite to Gokarna'})}
+  <p class="cap" style="margin:0 0 14px">Matched travel mates going on your dates. A trip holds up to 4 people; 2 places are left.</p>
+  <div class="card list">
+    <button class="tr-pick" role="checkbox" aria-checked="true">${av('VK','a4','s48')}<span class="t"><b>Vikram, 31</b><span class="cap">79% match · 13–16 Jan</span></span><span class="cbox">${i('check')}</span></button>
+    <button class="tr-pick" role="checkbox" aria-checked="false">${av('MJ','a2','s48')}<span class="t"><b>Meghna, 26</b><span class="cap">74% match · 12–14 Jan</span></span><span class="cbox">${i('check')}</span></button>
+    <div class="tr-pick" aria-disabled="true">${av('SR','a3','s48')}<span class="t"><b>Sana</b><span class="cap">Already on this trip</span></span></div>
+  </div>
+  <p class="cap mt16">They'll see the trip's dates and plan, and who's going. Everyone already on the trip is told when someone joins.</p>`,
+  bar:`<button class="btn btn-primary" data-go="tr-trip-detail" data-toast="Invite sent to Vikram">${i('send')}Send invite</button>`});
+
+/* 13 · Share with a trusted contact */
+MH.screen({id:'tr-share',flow:'travel',title:'Share your trip',mode:'tr',
+  note:'The chosen safety rule for travel. The contact gets a private link (no app needed) with the dates, plan and the verified first names and photos of everyone on the trip, plus check-ins on the day you leave and the day you are due back. If a check-in is missed, they are told.',
+  html:`${appbar({back:'tr-trip-detail',title:'Share your trip'})}
+  <div class="card pad hstack" style="gap:12px"><div class="tile-ic">${i('shield')}</div><span class="cap" style="color:var(--text);font-size:14px">Someone you trust can follow the trip. They don't need the app.</span></div>
+  <div class="field mt20"><label for="tr-c">Share with</label><div class="input">${i('user')}<input id="tr-c" value="Divya · +91 98450 •••••"></div></div>
+  <div class="sect"><div class="sect-h"><h3>What they'll see</h3></div>
+    <div class="card pad"><ul class="tr-sees">
+      <li>${i('calendar')}<span>Gokarna, 12–16 Jan, and the day-by-day plan</span></li>
+      <li>${i('shieldCheck')}<span>Verified first names and photos of everyone on the trip</span></li>
+      <li class="no">${i('eyeOff')}<span>Not your chats, costs or phone numbers</span></li></ul></div></div>
+  <div class="card list mt12">
+    ${MH.switchRow({title:'Check in when I leave',sub:'Mon 12 Jan, 9 pm. We\'ll ask if you\'re on your way.',on:true})}
+    ${MH.switchRow({title:'Check in when I\'m due back',sub:'Fri 16 Jan, 8 pm. If you don\'t answer, Divya is told.',on:true})}
+  </div>`,
+  bar:`<button class="btn btn-primary" data-go="tr-trip-detail" data-toast="Trip shared with Divya">${i('share')}Share with Divya</button>`});
 })();
 
 </script>
