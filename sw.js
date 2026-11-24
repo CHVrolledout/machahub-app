@@ -1,5 +1,5 @@
 /* MachaHub web app service worker. Generated into prototype/site/sw.js by build.py.
-   Pages: network first, falling back to the cache (so a new deploy shows up straight away,
+   Pages: network first, falling back to the cache (revalidated past the HTTP cache, so a new deploy shows up straight away,
    and the app still opens offline). Everything else: cache first. */
 const VERSION = 'mh-987accdfa4';
 const SHELL = ["./", "index.html", "overview.html", "manifest.webmanifest", "assets/splash-logo-first.jpg", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/maskable-192.png", "icons/apple-touch-icon.png", "icons/favicon-32.png"];
@@ -26,7 +26,8 @@ self.addEventListener('fetch', e => {
 
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req)
+      // no-cache: GitHub Pages sends max-age=600, so skip the browser cache and ask the server every time.
+      fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
         .then(res => { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); return res; })
         .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('index.html')))
     );
